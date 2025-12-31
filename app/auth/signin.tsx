@@ -1,12 +1,14 @@
 import OTPInput from '@/authFirebase/components/OTPInput';
 import PhoneInput from '@/authFirebase/components/PhoneInput';
 import SocialAuthButton from '@/authFirebase/components/SocialAuthButton';
+import { app } from '@/authFirebase/firebase';
 import { useAuth } from '@/authFirebase/useAuth';
 import { countries } from '@/constants/countries';
 import { Ionicons } from '@expo/vector-icons';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +23,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const { signInWithPhone, verifyOTP, signInWithGoogle, signInWithApple } =
     useAuth();
+  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [country, setCountry] = useState(countries[0]); // India
@@ -37,10 +40,17 @@ export default function SignInScreen() {
 
     setLoading(true);
     try {
-      Alert.alert(
-        'Update Required',
-        'Phone authentication is being updated. Please use Google or Apple Sign In.'
+      if (!recaptchaVerifier.current) {
+        throw new Error('Recaptcha not initialized');
+      }
+      const verificationId = await signInWithPhone(
+        phoneNumber,
+        recaptchaVerifier.current,
+        country.dial_code
       );
+      setVerificationId(verificationId);
+      setStep('otp');
+      Alert.alert('Success', 'OTP sent to your phone number');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to send OTP');
     } finally {
@@ -101,6 +111,11 @@ export default function SignInScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar style="dark" />
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={app.options}
+        attemptInvisibleVerification
+      />
 
       {/* Header */}
       <View className="px-6 py-4">
@@ -164,9 +179,8 @@ export default function SignInScreen() {
             {/* Continue */}
             <TouchableOpacity
               activeOpacity={0.8}
-              className={`w-full py-4 rounded-full items-center mt-6 ${
-                loading || !phoneNumber ? 'bg-gray-300' : 'bg-black'
-              }`}
+              className={`w-full py-4 rounded-full items-center mt-6 ${loading || !phoneNumber ? 'bg-gray-300' : 'bg-black'
+                }`}
               onPress={handleSendOTP}
               disabled={loading || !phoneNumber}
             >
@@ -187,11 +201,10 @@ export default function SignInScreen() {
             {/* Verify */}
             <TouchableOpacity
               activeOpacity={0.8}
-              className={`w-full py-4 rounded-full items-center mt-6 ${
-                loading || otp.length !== 6
+              className={`w-full py-4 rounded-full items-center mt-6 ${loading || otp.length !== 6
                   ? 'bg-gray-300'
                   : 'bg-black'
-              }`}
+                }`}
               onPress={handleVerifyOTP}
               disabled={loading || otp.length !== 6}
             >
