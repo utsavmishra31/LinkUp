@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 
 interface SocialAuthButtonProps {
     provider: 'google' | 'apple';
@@ -10,22 +10,24 @@ interface SocialAuthButtonProps {
 export default function SocialAuthButton({ provider, onPress, disabled = false }: SocialAuthButtonProps) {
     const config = {
         google: {
-            icon: 'logo-google' as const,
-            text: 'Continue with Google',
-            bgColor: 'bg-white',
+            icon: undefined,
+            image: 'https://developers.google.com/identity/images/g-logo.png',
+            text: '    Continue with Google',
+            bgColor: 'bg-gray-100',
             textColor: 'text-black',
             borderColor: 'border-gray-300',
         },
         apple: {
             icon: 'logo-apple' as const,
-            text: 'Continue with Apple',
+            image: undefined,
+            text: '    Continue with Apple',
             bgColor: 'bg-black',
             textColor: 'text-white',
             borderColor: 'border-black',
         },
     };
 
-    const { icon, text, bgColor, textColor, borderColor } = config[provider];
+    const { icon, image, text, bgColor, textColor, borderColor } = config[provider];
 
     return (
         <TouchableOpacity
@@ -36,7 +38,11 @@ export default function SocialAuthButton({ provider, onPress, disabled = false }
             disabled={disabled}
         >
             <View className="flex-row items-center">
-                <Ionicons name={icon} size={20} color={provider === 'google' ? '#000' : '#fff'} />
+                {image ? (
+                    <Image source={{ uri: image }} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                ) : (
+                    <Ionicons name={icon} size={20} color={provider === 'google' ? '#000' : '#fff'} />
+                )}
                 <Text className={`${textColor} text-base font-semibold ml-3`}>
                     {text}
                 </Text>

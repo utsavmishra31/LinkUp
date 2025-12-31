@@ -130,7 +130,7 @@ export default function SignInScreen() {
       </View>
 
       {/* Content */}
-      <View className="flex-1 px-6">
+      <View className="flex-1 px-6 mt-5">
         <View className="mb-8">
           <Text className="text-3xl font-bold text-black mb-2">
             {step === 'phone' ? 'Sign in' : 'Enter OTP'}
@@ -202,8 +202,8 @@ export default function SignInScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               className={`w-full py-4 rounded-full items-center mt-6 ${loading || otp.length !== 6
-                  ? 'bg-gray-300'
-                  : 'bg-black'
+                ? 'bg-gray-300'
+                : 'bg-black'
                 }`}
               onPress={handleVerifyOTP}
               disabled={loading || otp.length !== 6}

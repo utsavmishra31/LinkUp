@@ -83,8 +83,8 @@ export default function SignUpScreen() {
             </View>
 
             {/* Content */}
-            <View className="flex-1 px-6">
-                <View className="mb-8">
+            <View className="flex-1 px-6 mt-8">
+                <View className="mb-8 ml-2">
                     <Text className="text-3xl font-bold text-black mb-2">
                         {step === 'phone' ? 'Create account' : 'Enter OTP'}
                     </Text>
@@ -109,7 +109,7 @@ export default function SignUpScreen() {
                         {/* Continue Button */}
                         <TouchableOpacity
                             activeOpacity={0.8}
-                            className={`w-full py-4 rounded-full items-center mt-6 ${loading || !phoneNumber ? 'bg-gray-300' : 'bg-black'
+                            className={`w-full py-4 rounded-full items-center mt-10 ${loading || !phoneNumber ? 'bg-gray-300' : 'bg-black'
                                 }`}
                             onPress={handleSendOTP}
                             disabled={loading || !phoneNumber}
@@ -128,7 +128,7 @@ export default function SignUpScreen() {
                             By continuing, you agree to our{' '}
                             <Text className="text-black font-medium">Terms of Service</Text>
                             {' '}and{' '}
-                            <Text className="text-black font-medium">Privacy Policy</Text>
+                            <Text className="text-black font-medium">Privacy Policy.</Text>
                         </Text>
                     </>
                 ) : (

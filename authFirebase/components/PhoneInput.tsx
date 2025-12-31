@@ -25,7 +25,7 @@ export default function PhoneInput({
 
     return (
         <View>
-            <View className="flex-row items-center border-b border-gray-300 py-3">
+            <View className="flex-row items-center border-b border-gray-300 py-3 ml-2">
                 {/* Country Selector Trigger */}
                 <TouchableOpacity
                     onPress={() => setModalVisible(true)}
@@ -42,6 +42,11 @@ export default function PhoneInput({
                 {/* Phone Input */}
                 <TextInput
                     className="flex-1 text-xl font-medium text-black"
+                    style={{
+                        paddingVertical: 5,
+                        lineHeight: 20,
+                        marginLeft: 10,
+                    }}
                     placeholder={placeholder}
                     placeholderTextColor="#9CA3AF"
                     value={value}
