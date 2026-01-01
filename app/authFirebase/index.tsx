@@ -3,7 +3,7 @@ import { useAuth } from '@/app/authFirebase/useAuth';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Platform, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LandingScreen() {
@@ -14,14 +14,14 @@ export default function LandingScreen() {
     const handleGoogleSignIn = async () => {
         setLoading(true);
         try {
-            await signInWithGoogle();
-            Alert.alert('Success', 'Signed in with Google!');
-            router.replace('/(tabs)');
+            const result = await signInWithGoogle();
+            // Only navigate if sign-in was successful (not cancelled)
+            if (result) {
+                router.replace('/(tabs)');
+            }
+            // If result is null, user cancelled - no action needed
         } catch (error: any) {
-            Alert.alert(
-                'Error',
-                error.message || 'Failed to sign in with Google'
-            );
+            // Error handled silently for better UX
         } finally {
             setLoading(false);
         }
@@ -30,14 +30,14 @@ export default function LandingScreen() {
     const handleAppleSignIn = async () => {
         setLoading(true);
         try {
-            await signInWithApple();
-            Alert.alert('Success', 'Signed in with Apple!');
-            router.replace('/(tabs)');
+            const result = await signInWithApple();
+            // Only navigate if sign-in was successful (not cancelled)
+            if (result) {
+                router.replace('/(tabs)');
+            }
+            // If result is null, user cancelled - no action needed
         } catch (error: any) {
-            Alert.alert(
-                'Error',
-                error.message || 'Failed to sign in with Apple'
-            );
+            // Error handled silently for better UX
         } finally {
             setLoading(false);
         }

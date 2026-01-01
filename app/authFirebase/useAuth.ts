@@ -1,6 +1,7 @@
 import { auth } from '@/app/authFirebase/firebase';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';
 import {
     ApplicationVerifier,
     GoogleAuthProvider,
@@ -70,16 +71,16 @@ export function useAuth() {
             return await signInWithCredential(auth, googleCredential);
         } catch (error: any) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                // user cancelled the login flow
-                throw new Error('Sign in cancelled');
+                // User cancelled the login flow - return null instead of throwing
+                return null;
             } else if (error.code === statusCodes.IN_PROGRESS) {
-                // operation (e.g. sign in) is in progress already
-                throw new Error('Sign in in progress');
+                // Operation is already in progress
+                return null;
             } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                // play services not available or outdated
+                // Play services not available or outdated
                 throw new Error('Play services not available');
             } else {
-                // some other error happened
+                // Some other error happened
                 console.error('Google Sign In Error:', error);
                 throw error;
             }
@@ -88,11 +89,27 @@ export function useAuth() {
 
     const signInWithApple = async () => {
         try {
+            // Check if Apple Authentication is available
+            const isAvailable = await AppleAuthentication.isAvailableAsync();
+            if (!isAvailable) {
+                throw new Error('Apple Sign-In is not available on this device');
+            }
+
+            // Generate a random nonce
+            const rawNonce = Math.random().toString(36).substring(2, 10);
+
+            // Hash the nonce using SHA-256
+            const hashedNonce = await digestStringAsync(
+                CryptoDigestAlgorithm.SHA256,
+                rawNonce
+            );
+
             const credential = await AppleAuthentication.signInAsync({
                 requestedScopes: [
                     AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
                     AppleAuthentication.AppleAuthenticationScope.EMAIL,
                 ],
+                nonce: hashedNonce,
             });
 
             const { identityToken } = credential;
@@ -100,17 +117,19 @@ export function useAuth() {
                 throw new Error('Apple Sign-In failed - no identity token returned');
             }
 
+            // Create Firebase credential with the raw nonce
             const provider = new OAuthProvider('apple.com');
             const oAuthCredential = provider.credential({
                 idToken: identityToken,
+                rawNonce: rawNonce, // Pass the unhashed nonce to Firebase
             });
 
             return await signInWithCredential(auth, oAuthCredential);
         } catch (error: any) {
-            if (error.code === 'ERR_CANCELED') {
-                throw new Error('Sign in cancelled');
+            if (error.code === 'ERR_CANCELED' || error.code === 'ERR_CANCELLED') {
+                // User cancelled the login flow - return null instead of throwing
+                return null;
             }
-            console.error('Apple Sign In Error:', error);
             throw error;
         }
     };
