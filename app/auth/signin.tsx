@@ -1,5 +1,3 @@
-import OTPInput from '@/authFirebase/components/OTPInput';
-import PhoneInput from '@/authFirebase/components/PhoneInput';
 import SocialAuthButton from '@/authFirebase/components/SocialAuthButton';
 import { app } from '@/authFirebase/firebase';
 import { useAuth } from '@/authFirebase/useAuth';
@@ -10,14 +8,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
-  Platform,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -142,63 +139,60 @@ export default function SignInScreen() {
           </Text>
         </View>
 
-        {step === 'phone' ? (
-          <>
-            {/* Social Sign-In */}
-            <View className="gap-3 mb-6">
-              <SocialAuthButton
-                provider="google"
-                onPress={handleGoogleSignIn}
-                disabled={loading}
-              />
-              {Platform.OS === 'ios' && (
-                <SocialAuthButton
-                  provider="apple"
-                  onPress={handleAppleSignIn}
-                  disabled={loading}
-                />
-              )}
-            </View>
 
-            {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-px bg-gray-200" />
-              <Text className="mx-4 text-gray-400 text-sm">OR</Text>
-              <View className="flex-1 h-px bg-gray-200" />
-            </View>
-
-            {/* Phone Input */}
-            <PhoneInput
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              placeholder="Phone number"
-              selectedCountry={country}
-              onSelectCountry={setCountry}
+        {/* Social Sign-In */}
+        <View className="gap-3 mb-6">
+          <SocialAuthButton
+            provider="google"
+            onPress={handleGoogleSignIn}
+            disabled={loading}
+          />
+          {Platform.OS === 'ios' && (
+            <SocialAuthButton
+              provider="apple"
+              onPress={handleAppleSignIn}
+              disabled={loading}
             />
+          )}
+        </View>
 
-            {/* Continue */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              className={`w-full py-4 rounded-full items-center mt-6 ${loading || !phoneNumber ? 'bg-gray-300' : 'bg-black'
-                }`}
-              onPress={handleSendOTP}
-              disabled={loading || !phoneNumber}
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white text-lg font-bold">
-                  Continue
-                </Text>
-              )}
-            </TouchableOpacity>
-          </>
-        ) : (
+        {/* Divider */}
+        {/* <View className="flex-row items-center my-6">
+          <View className="flex-1 h-px bg-gray-200" />
+          <Text className="mx-4 text-gray-400 text-sm">OR</Text>
+          <View className="flex-1 h-px bg-gray-200" />
+        </View> */}
+
+        {/* Phone Input */}
+        {/* <PhoneInput
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          placeholder="Phone number"
+          selectedCountry={country}
+          onSelectCountry={setCountry}
+        /> */}
+
+        {/* Continue */}
+        {/* <TouchableOpacity
+          activeOpacity={0.8}
+          className={`w-full py-4 rounded-full items-center mt-6 ${loading || !phoneNumber ? 'bg-gray-300' : 'bg-black'
+            }`}
+          onPress={handleSendOTP}
+          disabled={loading || !phoneNumber}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white text-lg font-bold">
+              Continue
+            </Text>
+          )}
+        </TouchableOpacity> */}
+
+        {/* OTP Section - Commented Out */}
+        {/* {step === 'otp' && (
           <>
-            {/* OTP Input */}
             <OTPInput value={otp} onChangeText={setOtp} length={6} />
-
-            {/* Verify */}
             <TouchableOpacity
               activeOpacity={0.8}
               className={`w-full py-4 rounded-full items-center mt-6 ${loading || otp.length !== 6
@@ -216,8 +210,6 @@ export default function SignInScreen() {
                 </Text>
               )}
             </TouchableOpacity>
-
-            {/* Resend */}
             <TouchableOpacity
               onPress={handleSendOTP}
               disabled={loading}
@@ -228,7 +220,7 @@ export default function SignInScreen() {
               </Text>
             </TouchableOpacity>
           </>
-        )}
+        )} */}
       </View>
     </SafeAreaView>
   );
