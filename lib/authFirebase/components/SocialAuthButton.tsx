@@ -13,7 +13,7 @@ export default function SocialAuthButton({ provider, onPress, disabled = false }
             icon: undefined,
             image: 'https://developers.google.com/identity/images/g-logo.png',
             text: '    Continue with Google',
-            bgColor: 'bg-gray-100',
+            bgColor: 'bg',
             textColor: 'text-black',
             borderColor: 'border-gray-300',
         },
@@ -37,7 +37,7 @@ export default function SocialAuthButton({ provider, onPress, disabled = false }
             onPress={onPress}
             disabled={disabled}
         >
-            <View className="flex-row items-center">
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                 {image ? (
                     <Image source={{ uri: image }} style={{ width: 20, height: 20 }} resizeMode="contain" />
                 ) : (
