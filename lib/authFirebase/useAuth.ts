@@ -1,4 +1,4 @@
-import { auth } from '@/app/authFirebase/firebase';
+import { auth } from '@/lib/authFirebase/firebase';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';

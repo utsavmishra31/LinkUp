@@ -1,6 +1,6 @@
-import SocialAuthButton from '@/app/authFirebase/components/SocialAuthButton';
-import { useAuth } from '@/app/authFirebase/useAuth';
-import { Stack, useRouter } from 'expo-router';
+import SocialAuthButton from '@/lib/authFirebase/components/SocialAuthButton';
+import { useAuth } from '@/lib/authFirebase/useAuth';
+import { Stack,useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
@@ -45,9 +45,8 @@ export default function LandingScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style="dark" />
-
+            <Stack.Screen options={{ headerShown: false }} />
             {/* Main Content Container */}
             <View className="flex-1 justify-between px-6 py-10">
 
