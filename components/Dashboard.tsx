@@ -1,4 +1,4 @@
-import { useAuth } from '@/app/authFirebase/useAuth';
+import { useAuth } from '@/lib/authFirebase/useAuth';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, Pressable, Text, View } from 'react-native';
@@ -12,7 +12,7 @@ export default function Dashboard() {
         try {
             await signOut();
             Alert.alert('Success', 'You have been logged out');
-            router.replace('/authFirebase');
+            router.replace('/(auth)');
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to log out');
         }

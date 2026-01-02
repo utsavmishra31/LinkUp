@@ -1,4 +1,4 @@
-import { useAuth } from '@/app/authFirebase/useAuth';
+import { useAuth } from '@/lib/authFirebase/useAuth';
 import { useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -11,7 +11,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     useEffect(() => {
         if (loading) return;
 
-        const inAuthGroup = segments[0] === 'authFirebase';
+        const inAuthGroup = segments[0] === '(auth)';
         const inTabsGroup = segments[0] === '(tabs)';
 
         if (user && !inTabsGroup) {
@@ -19,7 +19,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
             router.replace('/(tabs)');
         } else if (!user && !inAuthGroup) {
             // User is not signed in but not in auth, redirect to auth
-            router.replace('/authFirebase');
+            router.replace('/(auth)');
         }
     }, [user, loading, segments]);
 
@@ -32,11 +32,21 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         );
     }
 
-    const inAuthGroup = segments[0] === 'authFirebase';
+    const inAuthGroup = segments[0] === '(auth)';
+    const inTabsGroup = segments[0] === '(tabs)';
 
     // Prevent rendering protected content if not authenticated
     if (!user && !inAuthGroup) {
         return <View className="flex-1 bg-white" />;
+    }
+
+    // Prevent rendering auth content if authenticated but not correctly redirected yet
+    if (user && !inTabsGroup) {
+        return (
+            <View className="flex-1 bg-white justify-center items-center">
+                <ActivityIndicator size="large" color="#000" />
+            </View>
+        );
     }
 
     return <>{children}</>;
