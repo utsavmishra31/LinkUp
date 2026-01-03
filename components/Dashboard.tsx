@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/authFirebase/useAuth';
+import { useAuth } from '@/lib/auth/useAuth';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, Pressable, Text, View } from 'react-native';
@@ -39,7 +39,7 @@ export default function Dashboard() {
                         Signed in as
                     </Text>
                     <Text className="text-xl font-semibold text-black mb-1">
-                        {user?.displayName || 'User'}
+                        {user?.user_metadata?.full_name || user?.user_metadata?.name || 'User'}
                     </Text>
                     <Text className="text-base text-gray-600">
                         {user?.email || 'No email available'}

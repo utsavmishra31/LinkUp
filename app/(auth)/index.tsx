@@ -1,6 +1,6 @@
-import SocialAuthButton from '@/lib/authFirebase/components/SocialAuthButton';
-import { useAuth } from '@/lib/authFirebase/useAuth';
-import { Stack,useRouter } from 'expo-router';
+import SocialAuthButton from '@/components/SocialAuthButton';
+import { useAuth } from '@/lib/auth/useAuth';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
