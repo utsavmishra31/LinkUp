@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/authFirebase/useAuth';
+import { useAuth } from '@/lib/auth/useAuth';
 import { useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
