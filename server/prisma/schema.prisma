@@ -20,14 +20,19 @@ enum Gender {
 
 model User {
   id            String   @id @db.Uuid
-  name          String
-  dob           DateTime
+  email         String?
+
+  authName      String?   // Google / Apple name (hidden, metadata)
+  displayName   String?   // User-entered name (shown in app)
+
+  dob           DateTime?
   age           Int?
-  gender        Gender
-  interestedIn  Gender
+  gender        Gender?
+  interestedIn  Gender?
   heightFt      Float?
-  location      String
-  lookingFor    LookingFor
+  location      String?
+  lookingFor    LookingFor?
+
   createdAt     DateTime @default(now())
 
   profile       Profile?
@@ -35,6 +40,7 @@ model User {
 
   @@map("users")
 }
+
 
 model Profile {
   userId             String   @id @db.Uuid
