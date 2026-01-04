@@ -1,14 +1,63 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum LookingFor {
+  DATE
+  FRIENDS
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+model User {
+  id            String   @id @db.Uuid
+  name          String
+  dob           DateTime
+  age           Int?
+  gender        Gender
+  interestedIn  Gender
+  heightFt      Float?
+  location      String
+  lookingFor    LookingFor
+  createdAt     DateTime @default(now())
+
+  profile       Profile?
+  photos        Photo[]
+
+  @@map("users")
+}
+
+model Profile {
+  userId             String   @id @db.Uuid
+  bioPrompt1         String?
+  bioPrompt2         String?
+  bioPrompt3         String?
+  availableNext7Days Boolean[]
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Photo {
+  id         String   @id @default(uuid())
+  userId     String   @db.Uuid
+  imageUrl   String
+  position   Int
+  isPrimary  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, position])
+  @@map("photos")
 }
