@@ -1,0 +1,191 @@
+import { useAuth } from '@/lib/auth/useAuth';
+import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
+import {
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+
+export default function DateOfBirth() {
+    const [day, setDay] = useState('');
+    const [month, setMonth] = useState('');
+    const [year, setYear] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const dayRef = useRef<TextInput>(null);
+    const monthRef = useRef<TextInput>(null);
+    const yearRef = useRef<TextInput>(null);
+
+    const { user, refreshProfile } = useAuth();
+    const router = useRouter();
+
+    const handleDayChange = (text: string) => {
+        setDay(text);
+        if (text.length === 2) {
+            monthRef.current?.focus();
+        }
+    };
+
+    const handleMonthChange = (text: string) => {
+        setMonth(text);
+        if (text.length === 2) {
+            yearRef.current?.focus();
+        }
+        if (text.length === 0) {
+            dayRef.current?.focus();
+        }
+    };
+
+    const handleYearChange = (text: string) => {
+        setYear(text);
+        if (text.length === 0) {
+            monthRef.current?.focus();
+        }
+    };
+
+    const validateDate = () => {
+        const d = parseInt(day);
+        const m = parseInt(month);
+        const y = parseInt(year);
+
+        if (isNaN(d) || isNaN(m) || isNaN(y)) return false;
+        if (d < 1 || d > 31) return false;
+        if (m < 1 || m > 12) return false;
+
+        const currentYear = new Date().getFullYear();
+        if (y < 1900 || y > currentYear - 13) return false; // Basic validation, must be at least 13
+
+        // Check valid days in month
+        const date = new Date(y, m - 1, d);
+        if (date.getFullYear() !== y || date.getMonth() + 1 !== m || date.getDate() !== d) {
+            return false;
+        }
+
+        return true;
+    };
+
+    const handleContinue = async () => {
+        if (!validateDate()) {
+            Alert.alert('Invalid Date', 'Please enter a valid date of birth.');
+            return;
+        }
+
+        if (!user) return;
+
+        setIsSubmitting(true);
+        try {
+            const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            // Calculate age
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            const { error } = await supabase
+                .from('users')
+                .update({
+                    dob: birthDate.toISOString(),
+                    age: age,
+                    onboardingCompleted: true, // Mark as complete if this is the last step
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            await refreshProfile();
+            // AuthWrapper will redirect to tabs
+        } catch (error) {
+            console.error('Error updating DOB:', error);
+            Alert.alert('Error', 'Failed to save date of birth.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const isValid = day.length === 2 && month.length === 2 && year.length === 4;
+
+    return (
+        <SafeAreaView className="flex-1 bg-white">
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1 px-6 pt-12"
+            >
+                <View className="flex-1">
+                    <TouchableOpacity onPress={() => router.back()} className="mb-6">
+                        <Ionicons name="chevron-back" size={32} color="black" />
+                    </TouchableOpacity>
+
+                    <Text className="text-3xl font-bold text-black mb-8">What's your birthdate?</Text>
+
+                    <View className="flex-row items-center space-x-4">
+                        <View className="flex-1">
+                            <TextInput
+                                ref={dayRef}
+                                value={day}
+                                onChangeText={handleDayChange}
+                                placeholder="DD"
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                className="border-b border-gray-500 py-3 text-2xl font-medium text-black text-center"
+                                autoFocus
+                                placeholderTextColor="#9ca3af"
+                            />
+                        </View>
+                        <Text className="text-2xl text-gray-400">/</Text>
+                        <View className="flex-1">
+                            <TextInput
+                                ref={monthRef}
+                                value={month}
+                                onChangeText={handleMonthChange}
+                                placeholder="MM"
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                className="border-b border-gray-500 py-3 text-2xl font-medium text-black text-center"
+                                placeholderTextColor="#9ca3af"
+                            />
+                        </View>
+                        <Text className="text-2xl text-gray-400">/</Text>
+                        <View className="flex-[1.5]">
+                            <TextInput
+                                ref={yearRef}
+                                value={year}
+                                onChangeText={handleYearChange}
+                                placeholder="YYYY"
+                                keyboardType="number-pad"
+                                maxLength={4}
+                                className="border-b border-gray-500 py-3 text-2xl font-medium text-black text-center"
+                                placeholderTextColor="#9ca3af"
+                            />
+                        </View>
+                    </View>
+                    <Text className="text-gray-600 text-sm mt-4">Calculates age which will be visible on profile.</Text>
+                </View>
+
+                <View className="flex-row justify-end pb-8">
+                    <TouchableOpacity
+                        onPress={handleContinue}
+                        disabled={!isValid || isSubmitting}
+                        className={`w-16 h-16 rounded-full items-center justify-center shadow-sm ${isValid && !isSubmitting ? 'bg-orange-900' : 'bg-gray-200'
+                            }`}
+                    >
+                        {isSubmitting ? (
+                            <Ionicons name="ellipsis-horizontal" size={24} color={isValid && !isSubmitting ? 'white' : 'black'} />
+                        ) : (
+                            <Ionicons name="chevron-forward" size={36} color={isValid && !isSubmitting ? 'white' : '#9ca3af'} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
+}

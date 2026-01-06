@@ -32,13 +32,13 @@ export default function NameOnboarding() {
                     email: user.email,
                     displayName: firstName.trim(),
                     surname: lastName.trim() || null,
-                    onboardingCompleted: true,
+                    // onboardingCompleted: true, // Moved to final step
                 })
 
             if (error) throw error;
 
             await refreshProfile();
-            // AuthWrapper will handle redirection
+            router.push('/(onboarding)/dob');
         } catch (error: any) {
             console.error('Error updating profile:', error);
             Alert.alert('Error', 'Failed to save name. Please try again.');
