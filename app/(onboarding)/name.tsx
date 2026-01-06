@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -58,41 +59,40 @@ export default function NameOnboarding() {
                     <Text className="text-3xl font-bold text-black mb-8">My name is</Text>
 
                     <View className="mb-6">
-                        <Text className="text-gray-500 font-medium mb-2 uppercase text-xs tracking-wider">First Name</Text>
                         <TextInput
                             value={firstName}
                             onChangeText={setFirstName}
-                            placeholder="First Name"
-                            className="border-b-2 border-gray-200 py-3 text-xl font-medium text-black"
+                            placeholder="First name"
+                            className="border-b border-gray-500 py-3 text-2xl font-medium text-black"
                             autoFocus
                             placeholderTextColor="#9ca3af"
                         />
                     </View>
 
                     <View className="mb-6">
-                        <Text className="text-gray-500 font-medium mb-2 uppercase text-xs tracking-wider">Last Name</Text>
                         <TextInput
                             value={lastName}
                             onChangeText={setLastName}
-                            placeholder="Last Name"
-                            className="border-b-2 border-gray-200 py-3 text-xl font-medium text-black"
+                            placeholder="Last name"
+                            className="border-b border-gray-500 py-3 text-2xl font-medium text-black"
                             placeholderTextColor="#9ca3af"
                         />
                         <Text className="text-gray-400 text-sm mt-2">This is optional.</Text>
                     </View>
                 </View>
 
-                <View className="mb-4">
+                <View className="flex-row justify-end pb-8">
                     <TouchableOpacity
                         onPress={handleContinue}
                         disabled={!isValid || isSubmitting}
-                        className={`w-full py-4 rounded-full items-center justify-center ${isValid && !isSubmitting ? 'bg-black' : 'bg-gray-200'
+                        className={`w-16 h-16 rounded-full items-center justify-center shadow-sm ${isValid && !isSubmitting ? 'bg-black' : 'bg-gray-200'
                             }`}
                     >
-                        <Text className={`text-lg font-bold ${isValid && !isSubmitting ? 'text-white' : 'text-gray-400'
-                            }`}>
-                            {isSubmitting ? 'Saving...' : 'Continue'}
-                        </Text>
+                        {isSubmitting ? (
+                            <Ionicons name="ellipsis-horizontal" size={24} color={isValid && !isSubmitting ? 'white' : 'black'} />
+                        ) : (
+                            <Ionicons name="chevron-forward" size={36} color={isValid && !isSubmitting ? 'white' : '#9ca3af'} />
+                        )}
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
