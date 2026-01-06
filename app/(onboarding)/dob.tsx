@@ -73,32 +73,15 @@ export default function DateOfBirth() {
         return true;
     };
 
-    const handleContinue = async () => {
-        if (!validateDate()) {
-            Alert.alert('Invalid Date', 'Please enter a valid date of birth.');
-            return;
-        }
-
+    const submitDate = async (age: number, birthDate: Date) => {
         if (!user) return;
 
         setIsSubmitting(true);
         try {
-            // Use UTC to avoid timezone issues when converting to ISO string for DB
-            // This ensures 11 Feb 2002 stays 11 Feb 2002 regardless of local timezone
-            const birthDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-
-            // Calculate age using inputs directly to be safe
-            const today = new Date();
-            let age = today.getFullYear() - parseInt(year);
-            const m = today.getMonth() - (parseInt(month) - 1);
-            if (m < 0 || (m === 0 && today.getDate() < parseInt(day))) {
-                age--;
-            }
-
             const { error } = await supabase
                 .from('users')
                 .update({
-                    dob: birthDate.toISOString(),
+                    dob: birthDate.toISOString().split('T')[0], // Send YYYY-MM-DD only
                     age: age,
                     onboardingCompleted: true, // Mark as complete if this is the last step
                 })
@@ -114,6 +97,41 @@ export default function DateOfBirth() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleContinue = async () => {
+        if (!validateDate()) {
+            Alert.alert('Invalid Date', 'Please enter a valid date of birth.');
+            return;
+        }
+
+        if (!user) return;
+
+        // Use UTC to avoid timezone issues when converting to ISO string for DB
+        const birthDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+
+        // Calculate age using inputs directly to be safe
+        const today = new Date();
+        let age = today.getFullYear() - parseInt(year);
+        const m = today.getMonth() - (parseInt(month) - 1);
+        if (m < 0 || (m === 0 && today.getDate() < parseInt(day))) {
+            age--;
+        }
+
+        Alert.alert(
+            `You're ${age}`,
+            'Please confirm your age.',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Confirm',
+                    onPress: () => submitDate(age, birthDate),
+                },
+            ]
+        );
     };
 
     const isValid = day.length === 2 && month.length === 2 && year.length === 4;
