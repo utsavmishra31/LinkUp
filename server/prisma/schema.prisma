@@ -24,6 +24,7 @@ model User {
 
   authName      String?   // Google / Apple name (hidden, metadata)
   displayName   String?   // User-entered name (shown in app)
+  surname       String?   // private, optional
 
   dob           DateTime?
   age           Int?
