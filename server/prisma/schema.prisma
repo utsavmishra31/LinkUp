@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum LookingFor {
@@ -26,7 +27,7 @@ model User {
   displayName   String?   // User-entered name (shown in app)
   surname       String?   // private, optional
 
-  dob           Date?
+  dob           DateTime? @db.Date
   age           Int?
   gender        Gender?
   interestedIn  Gender?

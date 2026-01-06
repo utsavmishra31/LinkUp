@@ -35,6 +35,12 @@ export default function DateOfBirth() {
         }
     };
 
+    const handleDayBlur = () => {
+        if (day.length === 1) {
+            setDay('0' + day);
+        }
+    };
+
     const handleMonthChange = (text: string) => {
         setMonth(text);
         if (text.length === 2) {
@@ -42,6 +48,12 @@ export default function DateOfBirth() {
         }
         if (text.length === 0) {
             dayRef.current?.focus();
+        }
+    };
+
+    const handleMonthBlur = () => {
+        if (month.length === 1) {
+            setMonth('0' + month);
         }
     };
 
@@ -62,7 +74,7 @@ export default function DateOfBirth() {
         if (m < 1 || m > 12) return false;
 
         const currentYear = new Date().getFullYear();
-        if (y < 1900 || y > currentYear - 13) return false; // Basic validation, must be at least 13
+        if (y < 1900 || y > currentYear) return false; // Basic validation, must be a past/current year
 
         // Check valid days in month
         const date = new Date(y, m - 1, d);
@@ -118,6 +130,11 @@ export default function DateOfBirth() {
             age--;
         }
 
+        if (age < 18) {
+            Alert.alert('Must be 18 or above', 'You must be at least 18 years old to use LinkUp.');
+            return;
+        }
+
         Alert.alert(
             `You're ${age}`,
             'Please confirm your age.',
@@ -155,6 +172,7 @@ export default function DateOfBirth() {
                                 ref={dayRef}
                                 value={day}
                                 onChangeText={handleDayChange}
+                                onBlur={handleDayBlur}
                                 placeholder="DD"
                                 keyboardType="number-pad"
                                 maxLength={2}
@@ -169,6 +187,7 @@ export default function DateOfBirth() {
                                 ref={monthRef}
                                 value={month}
                                 onChangeText={handleMonthChange}
+                                onBlur={handleMonthBlur}
                                 placeholder="MM"
                                 keyboardType="number-pad"
                                 maxLength={2}
