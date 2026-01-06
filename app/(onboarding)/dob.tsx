@@ -83,12 +83,15 @@ export default function DateOfBirth() {
 
         setIsSubmitting(true);
         try {
-            const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-            // Calculate age
+            // Use UTC to avoid timezone issues when converting to ISO string for DB
+            // This ensures 11 Feb 2002 stays 11 Feb 2002 regardless of local timezone
+            const birthDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+
+            // Calculate age using inputs directly to be safe
             const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            let age = today.getFullYear() - parseInt(year);
+            const m = today.getMonth() - (parseInt(month) - 1);
+            if (m < 0 || (m === 0 && today.getDate() < parseInt(day))) {
                 age--;
             }
 
