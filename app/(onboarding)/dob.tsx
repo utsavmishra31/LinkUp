@@ -64,7 +64,7 @@ export default function DateOfBirth() {
         }
     };
 
-    const validateDate = () => {
+    const validateDate = (): boolean => {
         const d = parseInt(day);
         const m = parseInt(month);
         const y = parseInt(year);
@@ -181,7 +181,7 @@ export default function DateOfBirth() {
                                 placeholderTextColor="#9ca3af"
                             />
                         </View>
-                        <Text className="text-2xl text-gray-400">/</Text>
+                        <Text className="text-2xl text-gray-600">/</Text>
                         <View className="flex-1">
                             <TextInput
                                 ref={monthRef}
@@ -195,7 +195,7 @@ export default function DateOfBirth() {
                                 placeholderTextColor="#9ca3af"
                             />
                         </View>
-                        <Text className="text-2xl text-gray-400">/</Text>
+                        <Text className="text-2xl text-gray-600">/</Text>
                         <View className="flex-[1.5]">
                             <TextInput
                                 ref={yearRef}
