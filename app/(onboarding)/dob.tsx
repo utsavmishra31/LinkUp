@@ -1,3 +1,4 @@
+import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -171,20 +172,11 @@ export default function DateOfBirth() {
                     <Text className="text-gray-600 text-sm mt-4">Calculates age which will be visible on profile.</Text>
                 </View>
 
-                <View className="flex-row justify-end pb-8">
-                    <TouchableOpacity
-                        onPress={handleContinue}
-                        disabled={!isValid || isSubmitting}
-                        className={`w-16 h-16 rounded-full items-center justify-center shadow-sm ${isValid && !isSubmitting ? 'bg-orange-900' : 'bg-gray-200'
-                            }`}
-                    >
-                        {isSubmitting ? (
-                            <Ionicons name="ellipsis-horizontal" size={24} color={isValid && !isSubmitting ? 'white' : 'black'} />
-                        ) : (
-                            <Ionicons name="chevron-forward" size={36} color={isValid && !isSubmitting ? 'white' : '#9ca3af'} />
-                        )}
-                    </TouchableOpacity>
-                </View>
+                <ArrowButton
+                    onPress={handleContinue}
+                    disabled={!isValid}
+                    isLoading={isSubmitting}
+                />
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

@@ -27,7 +27,7 @@ model User {
   displayName   String?   // User-entered name (shown in app)
   surname       String?   // private, optional
 
-  dob           DateTime?
+  dob           Date?
   age           Int?
   gender        Gender?
   interestedIn  Gender?

@@ -1,9 +1,9 @@
+import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, Text, TextInput, View } from 'react-native';
 
 export default function NameOnboarding() {
     const [firstName, setFirstName] = useState('');
@@ -81,20 +81,11 @@ export default function NameOnboarding() {
                     </View>
                 </View>
 
-                <View className="flex-row justify-end pb-8">
-                    <TouchableOpacity
-                        onPress={handleContinue}
-                        disabled={!isValid || isSubmitting}
-                        className={`w-16 h-16 rounded-full items-center justify-center shadow-sm ${isValid && !isSubmitting ? 'bg-orange-900' : 'bg-gray-200'
-                            }`}
-                    >
-                        {isSubmitting ? (
-                            <Ionicons name="ellipsis-horizontal" size={24} color={isValid && !isSubmitting ? 'white' : 'black'} />
-                        ) : (
-                            <Ionicons name="chevron-forward" size={36} color={isValid && !isSubmitting ? 'white' : '#9ca3af'} />
-                        )}
-                    </TouchableOpacity>
-                </View>
+                <ArrowButton
+                    onPress={handleContinue}
+                    disabled={!isValid}
+                    isLoading={isSubmitting}
+                />
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
