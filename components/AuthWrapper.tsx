@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
-    const { user, loading } = useAuth();
+    const { user, loading, profile } = useAuth();
     const router = useRouter();
     const segments = useSegments();
 
@@ -12,18 +12,32 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         if (loading) return;
 
         const inAuthGroup = segments[0] === '(auth)';
+        const inOnboardingGroup = segments[0] === '(onboarding)';
         const inTabsGroup = segments[0] === '(tabs)';
 
-        if (user && !inTabsGroup) {
-            // User is signed in but not in tabs, redirect to dashboard
-            router.replace('/(tabs)');
-        } else if (!user && !inAuthGroup) {
-            // User is not signed in but not in auth, redirect to auth
-            router.replace('/(auth)');
+        if (user) {
+            // User is signed in
+            if (!profile || (profile && !profile.onboardingCompleted)) {
+                // User needs onboarding
+                if (!inOnboardingGroup) {
+                    router.replace('/(onboarding)/name');
+                }
+            } else if (profile && profile.onboardingCompleted) {
+                // User is fully onboarded
+                if (!inTabsGroup) {
+                    router.replace('/(tabs)');
+                }
+            }
+        } else {
+            // User is not signed in
+            if (!inAuthGroup) {
+                router.replace('/(auth)');
+            }
         }
-    }, [user, loading, segments]);
+    }, [user, loading, profile, segments]);
 
-    // Show loading screen while checking auth state
+    // Show loading screen while checking auth state or profile
+    // We only show loading if we have a user but no profile yet (and we are expecting one)
     if (loading) {
         return (
             <View className="flex-1 bg-white justify-center items-center">
@@ -33,6 +47,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     }
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
     const inTabsGroup = segments[0] === '(tabs)';
 
     // Prevent rendering protected content if not authenticated
@@ -41,7 +56,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     }
 
     // Prevent rendering auth content if authenticated but not correctly redirected yet
-    if (user && !inTabsGroup) {
+    if (user && !inTabsGroup && !inOnboardingGroup) {
         return (
             <View className="flex-1 bg-white justify-center items-center">
                 <ActivityIndicator size="large" color="#000" />

@@ -8,11 +8,34 @@ import { useEffect, useState } from 'react';
 export function useAuth() {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [profile, setProfile] = useState<any | null>(null);
+
+    const fetchProfile = async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (error) {
+                console.error('Error fetching profile:', error);
+            } else {
+                setProfile(data);
+            }
+        } catch (error) {
+            console.error('Error in fetchProfile:', error);
+        }
+    };
 
     useEffect(() => {
         // Check current session
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            if (currentUser) {
+                fetchProfile(currentUser.id);
+            }
             setLoading(false);
         });
 
@@ -20,7 +43,13 @@ export function useAuth() {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            if (currentUser) {
+                fetchProfile(currentUser.id);
+            } else {
+                setProfile(null);
+            }
         });
 
         return () => subscription.unsubscribe();
@@ -65,16 +94,25 @@ export function useAuth() {
         try {
             await supabase.auth.signOut();
             await GoogleSignin.signOut();
+            setProfile(null);
         } catch (error) {
             console.error('Sign Out Error:', error);
         }
     };
 
+    const refreshProfile = async () => {
+        if (user) {
+            await fetchProfile(user.id);
+        }
+    };
+
     return {
         user,
+        profile,
         loading,
         signInWithGoogle,
         signInWithApple,
-        signOut
+        signOut,
+        refreshProfile
     };
 }
