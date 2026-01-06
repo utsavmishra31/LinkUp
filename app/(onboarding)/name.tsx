@@ -85,7 +85,7 @@ export default function NameOnboarding() {
                     <TouchableOpacity
                         onPress={handleContinue}
                         disabled={!isValid || isSubmitting}
-                        className={`w-16 h-16 rounded-full items-center justify-center shadow-sm ${isValid && !isSubmitting ? 'bg-black' : 'bg-gray-200'
+                        className={`w-16 h-16 rounded-full items-center justify-center shadow-sm ${isValid && !isSubmitting ? 'bg-orange-900' : 'bg-gray-200'
                             }`}
                     >
                         {isSubmitting ? (
