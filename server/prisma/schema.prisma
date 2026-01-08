@@ -9,8 +9,15 @@ datasource db {
 }
 
 enum LookingFor {
-  DATE
+  RELATIONSHIP
+  CASUAL_DATES
+  PARTY_PARTNER
   FRIENDS
+  HANGOUTS
+  WATCH_MOVIE
+  EXPLORING_CITY_AND_CAFE
+  TIME_SPENDING
+  FINDING_OUT
 }
 
 enum Gender {
@@ -30,10 +37,10 @@ model User {
   dob           DateTime? @db.Date
   age           Int?
   gender        Gender?
-  interestedIn  Gender?
+  interestedIn  Gender[]
   heightFt      Float?
   location      String?
-  lookingFor    LookingFor?
+  lookingFor    LookingFor[]
 
   onboardingCompleted Boolean @default(false)
 

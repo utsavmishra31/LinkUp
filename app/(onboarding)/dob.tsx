@@ -1,7 +1,6 @@
 import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
@@ -11,8 +10,7 @@ import {
     SafeAreaView,
     Text,
     TextInput,
-    TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 
 export default function DateOfBirth() {
@@ -159,9 +157,7 @@ export default function DateOfBirth() {
                 className="flex-1 px-6 pt-12"
             >
                 <View className="flex-1">
-                    <TouchableOpacity onPress={() => router.back()} className="mb-6">
-                        <Ionicons name="chevron-back" size={32} color="black" />
-                    </TouchableOpacity>
+                    <View className="mb-6" />
 
                     <Text className="text-3xl font-bold text-black mb-8">What's your birthdate?</Text>
 

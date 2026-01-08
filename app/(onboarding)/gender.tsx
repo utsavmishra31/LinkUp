@@ -1,7 +1,6 @@
 import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -29,13 +28,14 @@ export default function GenderSelection() {
                 .from('users')
                 .update({
                     gender: selectedGender,
-                    onboardingCompleted: true,
+                    // onboardingCompleted: true, // Moved to next step
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            await refreshProfile();
+            // await refreshProfile(); // No need to refresh yet
+            router.push('/(onboarding)/looking-for');
         } catch (error) {
             console.error('Error updating gender:', error);
             Alert.alert('Error', 'Failed to save gender.');
@@ -48,12 +48,12 @@ export default function GenderSelection() {
         <TouchableOpacity
             onPress={() => setSelectedGender(value)}
             className={`w-full p-4 rounded-xl border mb-4 ${selectedGender === value
-                    ? 'border-black bg-gray-50'
-                    : 'border-gray-200 bg-white'
+                ? 'border-purple-600 bg-purple-50'
+                : 'border-gray-200 bg-white'
                 }`}
         >
             <Text
-                className={`text-xl font-medium ${selectedGender === value ? 'text-black' : 'text-gray-600'
+                className={`text-xl font-medium ${selectedGender === value ? 'text-purple-600' : 'text-gray-600'
                     }`}
             >
                 {label}
@@ -64,9 +64,7 @@ export default function GenderSelection() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="flex-1 px-6 pt-12">
-                <TouchableOpacity onPress={() => router.back()} className="mb-6">
-                    <Ionicons name="chevron-back" size={32} color="black" />
-                </TouchableOpacity>
+
 
                 <Text className="text-3xl font-bold text-black mb-8">
                     Which gender best describes you?
