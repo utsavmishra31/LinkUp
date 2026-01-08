@@ -33,12 +33,6 @@ export default function DateOfBirth() {
         }
     };
 
-    const handleDayBlur = () => {
-        if (day.length === 1) {
-            setDay('0' + day);
-        }
-    };
-
     const handleMonthChange = (text: string) => {
         setMonth(text);
         if (text.length === 2) {
@@ -46,12 +40,6 @@ export default function DateOfBirth() {
         }
         if (text.length === 0) {
             dayRef.current?.focus();
-        }
-    };
-
-    const handleMonthBlur = () => {
-        if (month.length === 1) {
-            setMonth('0' + month);
         }
     };
 
@@ -148,7 +136,7 @@ export default function DateOfBirth() {
         );
     };
 
-    const isValid = day.length === 2 && month.length === 2 && year.length === 4;
+    const isValid = day.length >= 1 && month.length >= 1 && year.length === 4;
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -167,7 +155,6 @@ export default function DateOfBirth() {
                                 ref={dayRef}
                                 value={day}
                                 onChangeText={handleDayChange}
-                                onBlur={handleDayBlur}
                                 placeholder="DD"
                                 keyboardType="number-pad"
                                 maxLength={2}
@@ -182,7 +169,6 @@ export default function DateOfBirth() {
                                 ref={monthRef}
                                 value={month}
                                 onChangeText={handleMonthChange}
-                                onBlur={handleMonthBlur}
                                 placeholder="MM"
                                 keyboardType="number-pad"
                                 maxLength={2}
