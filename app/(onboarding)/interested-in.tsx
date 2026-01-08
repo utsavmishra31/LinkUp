@@ -37,14 +37,14 @@ export default function InterestedInSelection() {
                 .from('users')
                 .update({
                     interestedIn: selectedGenders,
-                    onboardingCompleted: true,
+                    // onboardingCompleted: true, // Moved to next step
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            await refreshProfile();
-            // router.push('/(onboarding)/looking-for'); // This is now the last step, flow handled by AuthWrapper or just replace
+            // await refreshProfile();
+            router.push('/(onboarding)/height');
 
         } catch (error) {
             console.error('Error updating interestedIn:', error);
