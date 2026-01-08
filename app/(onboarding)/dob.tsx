@@ -95,14 +95,13 @@ export default function DateOfBirth() {
                 .update({
                     dob: birthDate.toISOString().split('T')[0], // Send YYYY-MM-DD only
                     age: age,
-                    onboardingCompleted: true, // Mark as complete if this is the last step
+                    // onboardingCompleted: true, // Moved to gender selection
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            await refreshProfile();
-            // AuthWrapper will redirect to tabs
+            router.push('/(onboarding)/gender');
         } catch (error) {
             console.error('Error updating DOB:', error);
             Alert.alert('Error', 'Failed to save date of birth.');
