@@ -159,14 +159,13 @@ export default function HeightSelection() {
                 .from('users')
                 .update({
                     height: `${selectedHeight.feet} ${selectedHeight.inches}`,
-                    onboardingCompleted: true,
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
             await refreshProfile();
-            router.replace('/(tabs)');
+            router.push('/(onboarding)/availability');
         } catch (error) {
             console.error('Error updating height:', error);
             Alert.alert('Error', 'Failed to save height.');

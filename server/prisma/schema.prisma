@@ -59,7 +59,7 @@ model Profile {
   bioPrompt1         String?
   bioPrompt2         String?
   bioPrompt3         String?
-  availableNext7Days Boolean[]
+  availableNext8Days Boolean[]
 
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
