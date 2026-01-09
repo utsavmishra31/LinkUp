@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
 }
 
 enum LookingFor {
@@ -39,7 +41,7 @@ model User {
   gender        Gender?
   interestedIn  Gender[]
   height        String?
-  location      String?
+  city          String?
   lookingFor    LookingFor[]
 
   onboardingCompleted Boolean @default(false)
@@ -60,6 +62,8 @@ model Profile {
   bioPrompt2         String?
   bioPrompt3         String?
   availableNext8Days Boolean[]
+
+  location Unsupported("geography(Point,4326)")?
 
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
