@@ -153,18 +153,8 @@ export default function AvailabilitySelection() {
                 if (error) throw error;
             }
 
-            // Mark onboarding as completed
-            const { error: userError } = await supabase
-                .from('users')
-                .update({
-                    onboardingCompleted: true,
-                })
-                .eq('id', user.id);
-
-            if (userError) throw userError;
-
-            await refreshProfile();
-            router.replace('/(tabs)');
+            // Navigate to location permission page
+            router.push('/(onboarding)/location');
         } catch (error) {
             console.error('Error updating availability:', error);
             Alert.alert('Error', 'Failed to save availability.');

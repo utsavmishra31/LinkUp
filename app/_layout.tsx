@@ -12,6 +12,8 @@ import 'react-native-reanimated';
 GoogleSignin.configure({
   webClientId:
     '309673756634-i52dg8q0cr2e80b0i5vk91rf72rhqchm.apps.googleusercontent.com',
+  iosClientId:
+    '309673756634-fsh3sniau2cpevrf45ffi64sjlbvv33j.apps.googleusercontent.com',
 });
 
 export default function RootLayout() {
