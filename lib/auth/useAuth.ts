@@ -16,7 +16,7 @@ export function useAuth() {
                 .from('users')
                 .select('*')
                 .eq('id', userId)
-                .maybeSingle();
+                .single();
 
             if (error) {
                 console.error('Error fetching profile:', error);
