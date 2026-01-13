@@ -61,20 +61,10 @@ export default function LocationPermission() {
                     return;
                 }
 
-                // Mark onboarding as completed
-                const { error: userError } = await supabase
-                    .from('users')
-                    .update({
-                        onboardingCompleted: true,
-                    })
-                    .eq('id', user.id);
-
-                if (userError) throw userError;
-
                 await refreshProfile();
 
-                // Navigate to main app
-                router.replace('/(tabs)');
+                // Navigate to photos upload
+                router.push('/(onboarding)/photos');
             }
         } catch (error) {
             console.error('Error requesting location:', error);
@@ -198,7 +188,7 @@ export default function LocationPermission() {
                             onPress={() => {
                                 Alert.alert(
                                     'Skip Location',
-                                    'You can enable location later in settings, but this will limit your ability to find nearby matches.',
+                                    'You can enable location later in settings. You will now proceed to add your photos.',
                                     [
                                         { text: 'Cancel', style: 'cancel' },
                                         {
@@ -206,12 +196,8 @@ export default function LocationPermission() {
                                             style: 'destructive',
                                             onPress: async () => {
                                                 if (user) {
-                                                    await supabase
-                                                        .from('users')
-                                                        .update({ onboardingCompleted: true })
-                                                        .eq('id', user.id);
                                                     await refreshProfile();
-                                                    router.replace('/(tabs)');
+                                                    router.push('/(onboarding)/photos');
                                                 }
                                             },
                                         },

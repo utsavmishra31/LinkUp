@@ -10,4 +10,16 @@ app.use(express.json());
 
 app.use('/upload', uploadRoutes);
 
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Error:', err);
+
+    if (err.name === 'UnauthorizedError') {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    res.status(500).json({ error: 'Internal server error' });
+});
+
 export default app;
+

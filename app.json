@@ -11,21 +11,25 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.utsavmishra31.LinkUp",
-      "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.309673756634-fsh3sniau2cpevrf45ffi64sjlbvv33j"
-            ]
-          }
+    "NSPhotoLibraryUsageDescription": "Allow LinkUp to access your photos",
+    "NSCameraUsageDescription": "Allow LinkUp to use your camera",
+    "CFBundleURLTypes": [
+      {
+        "CFBundleURLSchemes": [
+          "com.googleusercontent.apps.309673756634-fsh3sniau2cpevrf45ffi64sjlbvv33j"
         ]
       }
+    ]
+  }
     },
     "android": {
       "package": "com.utsavmishra31.LinkUp",
-      "googleServicesFile": "./google-services.json",
+      "permissions": [
+    "READ_MEDIA_IMAGES",
+    "READ_EXTERNAL_STORAGE"
+  ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,6 +47,13 @@
       "expo-router",
       "@react-native-google-signin/google-signin",
       "expo-apple-authentication",
+      [
+    "expo-image-picker",
+    {
+      "photosPermission": "Allow LinkUp to access your photos",
+      "cameraPermission": "Allow LinkUp to access your camera"
+    }
+  ],
       [
         "expo-build-properties",
         {
