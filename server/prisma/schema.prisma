@@ -57,9 +57,7 @@ model User {
 
 model Profile {
   userId             String   @id @db.Uuid
-  bioPrompt1         String?
-  bioPrompt2         String?
-  bioPrompt3         String?
+  prompts            Json?
   availableNext8Days Boolean[]
 
   location Unsupported("geography(Point,4326)")?
