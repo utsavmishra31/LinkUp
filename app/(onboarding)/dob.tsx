@@ -7,11 +7,12 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     Text,
     TextInput,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function DateOfBirth() {
     const [day, setDay] = useState('');

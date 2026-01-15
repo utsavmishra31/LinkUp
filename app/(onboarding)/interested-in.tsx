@@ -5,11 +5,12 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     Alert,
-    SafeAreaView,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function InterestedInSelection() {
     const [selectedGenders, setSelectedGenders] = useState<('MALE' | 'FEMALE' | 'OTHER')[]>([]);

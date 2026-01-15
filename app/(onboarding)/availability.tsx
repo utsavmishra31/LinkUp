@@ -6,11 +6,12 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
-    SafeAreaView,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 // Generate 8 days starting from today (today + next 7 days)
 const getNext8Days = () => {

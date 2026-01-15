@@ -3,7 +3,8 @@ import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, KeyboardAvoidingView, Platform,  Text, TextInput, View } from 'react-native';
 
 export default function NameOnboarding() {
     const [firstName, setFirstName] = useState('');

@@ -9,12 +9,13 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    SafeAreaView,
     ScrollView,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const REQUIRED_PHOTOS = 2;
 const MAX_PHOTOS = 6;

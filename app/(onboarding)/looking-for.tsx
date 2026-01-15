@@ -5,12 +5,13 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     Alert,
-    SafeAreaView,
     ScrollView,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 // Use same Enum as Prisma
 const LOOKING_FOR_OPTIONS = [
