@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NameOnboarding() {
@@ -11,17 +11,10 @@ export default function NameOnboarding() {
     const [lastName, setLastName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { user, refreshProfile, signOut } = useAuth();
+    const { user, refreshProfile } = useAuth();
     const router = useRouter();
 
-    const handleLogout = async () => {
-        try {
-            await signOut();
-            router.replace('/(auth)');
-        } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to log out');
-        }
-    };
+
 
     const handleContinue = async () => {
         if (!firstName.trim()) {
@@ -89,18 +82,6 @@ export default function NameOnboarding() {
                         />
                         <Text className="text-gray-400 text-sm mt-2">This is optional.</Text>
                     </View>
-                </View>
-
-
-                <View className="mb-4">
-                    <Pressable
-                        onPress={handleLogout}
-                        className="bg-black rounded-full py-4 px-6 active:opacity-80"
-                    >
-                        <Text className="text-white text-center text-lg font-semibold">
-                            Logout
-                        </Text>
-                    </Pressable>
                 </View>
 
                 <ArrowButton

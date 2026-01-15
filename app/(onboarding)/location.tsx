@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -14,12 +14,74 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
 export default function LocationPermission() {
     const [isLoading, setIsLoading] = useState(false);
-    const [locationGranted, setLocationGranted] = useState(false);
+    // locationProcessing means we are in the process of finalizing/getting location after permission confirmed
+    const [locationProcessing, setLocationProcessing] = useState(false);
+    const [hasExistingPermission, setHasExistingPermission] = useState(false);
+
     const { user, refreshProfile } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        checkPermission();
+    }, []);
+
+    const checkPermission = async () => {
+        try {
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status === 'granted') {
+                setHasExistingPermission(true);
+            }
+        } catch (error) {
+            console.error('Error checking permission:', error);
+        }
+    };
+
+    const finalizeOnboarding = async () => {
+        if (!user) return;
+
+        try {
+            setLocationProcessing(true);
+
+            // Get current location (get fresh coords)
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            const { latitude, longitude } = location.coords;
+
+            // Save location to database using RPC function
+            const { error } = await supabase.rpc('set_profile_location', {
+                uid: user.id,
+                lat: latitude,
+                lng: longitude,
+            });
+
+            if (error) throw error;
+
+            // Mark onboarding as completed
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ onboardingCompleted: true })
+                .eq('id', user.id);
+
+            if (updateError) {
+                console.error('Error updating onboarding status:', updateError);
+            }
+
+            await refreshProfile();
+
+            // Navigate to Dashboard (Tabs)
+            router.replace('/components/dashboard');
+
+        } catch (error) {
+            console.error('Error finalizing location:', error);
+            Alert.alert('Error', 'Failed to save your location. Please try again.');
+            setLocationProcessing(false);
+            setIsLoading(false);
+        }
+    };
 
     const requestLocationPermission = async () => {
         try {
@@ -39,50 +101,50 @@ export default function LocationPermission() {
                 return;
             }
 
-            // Permission granted, get current location
-            setLocationGranted(true);
-            const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-            });
+            // Permission granted, proceed to finalize
+            await finalizeOnboarding();
 
-            const { latitude, longitude } = location.coords;
-
-            // Save location to database using RPC function
-            if (user) {
-                const { error } = await supabase.rpc('set_profile_location', {
-                    uid: user.id,
-                    lat: latitude,
-                    lng: longitude,
-                });
-
-                if (error) {
-                    console.error('Error saving location:', error);
-                    Alert.alert('Error', 'Failed to save your location. Please try again.');
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Mark onboarding as completed
-                const { error: updateError } = await supabase
-                    .from('users')
-                    .update({ onboardingCompleted: true })
-                    .eq('id', user.id);
-
-                if (updateError) {
-                    console.error('Error updating onboarding status:', updateError);
-                }
-
-                await refreshProfile();
-
-                // Navigate to Dashboard (Tabs)
-                router.replace('/(tabs)');
-            }
         } catch (error) {
             console.error('Error requesting location:', error);
             Alert.alert('Error', 'Failed to get your location. Please try again.');
-        } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSkip = async () => {
+        Alert.alert(
+            'Skip Location',
+            'You can enable location later in settings. You will now proceed to finish onboarding.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Skip',
+                    style: 'destructive',
+                    onPress: async () => {
+                        if (user) {
+                            // Mark onboarding as completed
+                            const { error: updateError } = await supabase
+                                .from('users')
+                                .update({ onboardingCompleted: true })
+                                .eq('id', user.id);
+
+                            if (updateError) {
+                                console.error('Error updating onboarding status:', updateError);
+                            }
+
+                            await refreshProfile();
+                            router.replace('/components/dashboard');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleStartJourney = async () => {
+        setIsLoading(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await finalizeOnboarding();
     };
 
     return (
@@ -91,10 +153,12 @@ export default function LocationPermission() {
                 {/* Header */}
                 <View className="mb-8">
                     <Text className="text-3xl font-bold text-black mb-2">
-                        Enable Location
+                        {hasExistingPermission ? 'All Set!' : 'Enable Location'}
                     </Text>
                     <Text className="text-base text-gray-600">
-                        Help us find people near you for better matches
+                        {hasExistingPermission
+                            ? 'You are ready to start meeting people.'
+                            : 'Help us find people near you for better matches'}
                     </Text>
                 </View>
 
@@ -110,7 +174,11 @@ export default function LocationPermission() {
                             elevation: 5,
                         }}
                     >
-                        <Ionicons name="location" size={80} color="#9333ea" />
+                        {hasExistingPermission ? (
+                            <Ionicons name="rocket" size={80} color="#9333ea" />
+                        ) : (
+                            <Ionicons name="location" size={80} color="#9333ea" />
+                        )}
                     </View>
 
                     {/* Benefits List */}
@@ -161,31 +229,60 @@ export default function LocationPermission() {
 
                 {/* Action Button */}
                 <View className="pb-8">
-                    {!locationGranted ? (
-                        <TouchableOpacity
-                            onPress={requestLocationPermission}
-                            disabled={isLoading}
-                            activeOpacity={0.8}
-                            className="bg-purple-500 rounded-full py-4 items-center justify-center"
-                            style={{
-                                shadowColor: '#9333ea',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 8,
-                                elevation: 5,
-                            }}
-                        >
-                            {isLoading ? (
-                                <ActivityIndicator color="white" />
+                    {!locationProcessing ? (
+                        <>
+                            {hasExistingPermission ? (
+                                <TouchableOpacity
+                                    onPress={handleStartJourney}
+                                    disabled={isLoading}
+                                    activeOpacity={0.8}
+                                    className="bg-purple-500 rounded-full py-4 items-center justify-center"
+                                    style={{
+                                        shadowColor: '#9333ea',
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.3,
+                                        shadowRadius: 8,
+                                        elevation: 5,
+                                    }}
+                                >
+                                    {isLoading ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <View className="flex-row items-center">
+                                            <Text className="text-white text-lg font-bold mr-2">
+                                                Start your journey
+                                            </Text>
+                                            <Ionicons name="arrow-forward" size={20} color="white" />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
                             ) : (
-                                <View className="flex-row items-center">
-                                    <Ionicons name="location-sharp" size={20} color="white" />
-                                    <Text className="text-white text-lg font-bold ml-2">
-                                        Enable Location Access
-                                    </Text>
-                                </View>
+                                <TouchableOpacity
+                                    onPress={requestLocationPermission}
+                                    disabled={isLoading}
+                                    activeOpacity={0.8}
+                                    className="bg-purple-500 rounded-full py-4 items-center justify-center"
+                                    style={{
+                                        shadowColor: '#9333ea',
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.3,
+                                        shadowRadius: 8,
+                                        elevation: 5,
+                                    }}
+                                >
+                                    {isLoading ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <View className="flex-row items-center">
+                                            <Ionicons name="location-sharp" size={20} color="white" />
+                                            <Text className="text-white text-lg font-bold ml-2">
+                                                Enable Location Access
+                                            </Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
                             )}
-                        </TouchableOpacity>
+                        </>
                     ) : (
                         <View className="items-center">
                             <ActivityIndicator size="large" color="#9333ea" />
@@ -193,38 +290,10 @@ export default function LocationPermission() {
                         </View>
                     )}
 
-                    {/* Skip option */}
-                    {!isLoading && !locationGranted && (
+                    {/* Skip option - Only show if permission not already granted and not processing */}
+                    {!isLoading && !locationProcessing && !hasExistingPermission && (
                         <TouchableOpacity
-                            onPress={() => {
-                                Alert.alert(
-                                    'Skip Location',
-                                    'You can enable location later in settings. You will now proceed to finish onboarding.',
-                                    [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        {
-                                            text: 'Skip',
-                                            style: 'destructive',
-                                            onPress: async () => {
-                                                if (user) {
-                                                    // Mark onboarding as completed
-                                                    const { error: updateError } = await supabase
-                                                        .from('users')
-                                                        .update({ onboardingCompleted: true })
-                                                        .eq('id', user.id);
-
-                                                    if (updateError) {
-                                                        console.error('Error updating onboarding status:', updateError);
-                                                    }
-
-                                                    await refreshProfile();
-                                                    router.replace('/(tabs)');
-                                                }
-                                            },
-                                        },
-                                    ]
-                                );
-                            }}
+                            onPress={handleSkip}
                             className="mt-4 py-3 items-center"
                         >
                             <Text className="text-gray-500 text-base">Skip for now</Text>
