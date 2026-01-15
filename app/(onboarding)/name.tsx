@@ -43,7 +43,6 @@ export default function NameOnboarding() {
                     email: user.email,
                     displayName: firstName.trim(),
                     surname: lastName.trim() || null,
-                    // onboardingCompleted: true, // Moved to final step
                 })
 
             if (error) throw error;

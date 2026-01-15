@@ -58,7 +58,6 @@ export default function LookingForSelection() {
                 .from('users')
                 .update({
                     lookingFor: selectedOptions,
-                    // onboardingCompleted: true, // Moved to next step
                 })
                 .eq('id', user.id);
 

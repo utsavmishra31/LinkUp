@@ -3,8 +3,12 @@ import '../global.css';
 import AuthWrapper from '@/components/AuthWrapper';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
 
 // ✅ Configure Google Sign-In ONCE
 GoogleSignin.configure({

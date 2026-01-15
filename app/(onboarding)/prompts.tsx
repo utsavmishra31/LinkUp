@@ -1,327 +1,326 @@
+import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
+    Keyboard,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     ScrollView,
+    StatusBar,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
-const MAX_ANSWER_LENGTH = 150;
-const REQUIRED_PROMPTS = 1;
-const MAX_PROMPTS = 3;
-
-// Curated prompt questions similar to Bumble/Hinge
-const PROMPT_QUESTIONS = [
-    "My ideal Sunday",
-    "Two truths and a lie",
-    "I'm looking for someone who",
-    "The way to my heart is",
-    "I'm weirdly attracted to",
-    "My simple pleasures",
-    "A perfect day would include",
-    "I go crazy for",
-    "My most controversial opinion",
-    "I'm overly competitive about",
-    "The key to my heart is",
-    "I'm convinced that",
-    "My greatest strength is",
-    "I geek out on",
-    "The one thing I'd like to know about you is",
-    "My love language is",
-    "I'm secretly really good at",
-    "My perfect first date",
+// --- Hardcoded Prompts Data ---
+const PREDEFINED_PROMPTS = [
+    "A non-negotiable for me is",
+    "Simple pleasures",
+    "Typical Sunday",
     "I'm looking for",
-    "Together we could",
-    "I know the best spot in town for",
-    "My go-to karaoke song",
-    "I won't shut up about",
-    "A shower thought I recently had",
+    "My simple pleasures",
+    "A random fact I love",
+    "I geek out on",
+    "Two truths and a lie",
+    "Believe it or not, I",
+    "Best travel story",
+    "Dating me is like",
+    "I want someone who",
+    "My most controversial opinion is",
+    "The way to win me over is",
+    "Biggest risk I've taken",
 ];
 
-interface PromptSlot {
-    question: string | null;
+interface PromptData {
+    id: string; // unique ID based on timestamp or random
+    question: string;
     answer: string;
 }
 
-// ... (imports remain the same, I will assume the imports block is outside the replacement range if I start from line 57, but wait, the prompt asks to rewrite the UI. I can replace the whole function body.)
-export default function PromptsPage() {
-    const [prompts, setPrompts] = useState<PromptSlot[]>([
-        { question: null, answer: '' },
-        { question: null, answer: '' },
-        { question: null, answer: '' },
-    ]);
-    const [showQuestionPicker, setShowQuestionPicker] = useState(false);
-    const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { user, refreshProfile } = useAuth();
+export default function PromptsScreen() {
     const router = useRouter();
+    const { user } = useAuth();
 
-    const openQuestionPicker = (index: number) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // --- State ---
+    const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null, null, null]);
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Track which slot we are currently editing (0, 1, or 2)
+    const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
+
+    // Track state within the modal (selecting question vs typing answer)
+    const [stepInModal, setStepInModal] = useState<'SELECT_QUESTION' | 'TYPE_ANSWER'>('SELECT_QUESTION');
+    const [tempQuestion, setTempQuestion] = useState('');
+    const [tempAnswer, setTempAnswer] = useState('');
+
+    // --- Actions ---
+
+    const handleSlotPress = (index: number) => {
+        const existingData = selectedPrompts[index];
         setActiveSlotIndex(index);
-        setShowQuestionPicker(true);
-    };
 
-    const selectQuestion = (question: string) => {
-        if (activeSlotIndex !== null) {
-            setPrompts(prev => {
-                const updated = [...prev];
-                updated[activeSlotIndex] = { ...updated[activeSlotIndex], question };
-                return updated;
-            });
-            setShowQuestionPicker(false);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        if (existingData) {
+            setTempQuestion(existingData.question);
+            setTempAnswer(existingData.answer);
+            setStepInModal('TYPE_ANSWER'); // Jump straight to editing answer but allow back to change prompt
+            // If they want to change the prompt, they can hit "Back" in the modal header
+        } else {
+            setTempQuestion('');
+            setTempAnswer('');
+            setStepInModal('SELECT_QUESTION');
         }
+        setModalVisible(true);
     };
 
-    const updateAnswer = (index: number, answer: string) => {
-        if (answer.length <= MAX_ANSWER_LENGTH) {
-            setPrompts(prev => {
-                const updated = [...prev];
-                updated[index] = { ...updated[index], answer };
-                return updated;
-            });
-        }
+    const handleClearSlot = (index: number) => {
+        const newPrompts = [...selectedPrompts];
+        newPrompts[index] = null;
+        setSelectedPrompts(newPrompts);
     };
 
-    const clearPrompt = (index: number) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setPrompts(prev => {
-            const updated = [...prev];
-            updated[index] = { question: null, answer: '' };
-            return updated;
-        });
+    const handleSelectQuestion = (question: string) => {
+        setTempQuestion(question);
+        setStepInModal('TYPE_ANSWER');
+    };
+
+    const handleSavePrompt = () => {
+        if (activeSlotIndex === null) return;
+        if (!tempAnswer.trim()) return;
+
+        const newPrompts = [...selectedPrompts];
+        newPrompts[activeSlotIndex] = {
+            id: Date.now().toString(),
+            question: tempQuestion,
+            answer: tempAnswer.trim(),
+        };
+        setSelectedPrompts(newPrompts);
+        closeModal();
+    };
+
+    const closeModal = () => {
+        setModalVisible(false);
+        setActiveSlotIndex(null);
+        setStepInModal('SELECT_QUESTION');
+        setTempQuestion('');
+        setTempAnswer('');
     };
 
     const handleContinue = async () => {
+        if (!user) {
+            Alert.alert('Error', 'No authenticated user found.');
+            return;
+        }
+
+        const validPrompts = selectedPrompts.filter((p): p is PromptData => p !== null);
+
+        if (validPrompts.length < 1) {
+            Alert.alert('Required', 'Please add at least 1 prompt.');
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
-            // Filter valid prompts
-            const validPrompts = prompts.filter(p => p.question && p.answer.trim());
+            // 1. Save prompts to profile
+            // We use upsert to create or update the profile
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    userId: user.id,
+                    prompts: validPrompts, // Saving as JSONB
+                });
 
-            if (validPrompts.length < REQUIRED_PROMPTS) {
-                Alert.alert(
-                    'More Prompts Required',
-                    `Please fill at least ${REQUIRED_PROMPTS} prompt to continue.`,
-                    [{ text: 'OK' }]
-                );
-                return;
-            }
+            if (profileError) throw profileError;
 
-            setIsSubmitting(true);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-            // Get session token
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-                throw new Error('No access token available');
-            }
-
-            // Save prompts to backend
-            const response = await fetch(`${API_URL}/prompts`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ prompts: validPrompts }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Failed to save prompts');
-            }
-
-            // Mark onboarding as completed
-            if (user) {
-                const { error } = await supabase
-                    .from('users')
-                    .update({ onboardingCompleted: true })
-                    .eq('id', user.id);
-
-                if (error) throw error;
-
-                await refreshProfile();
-                router.replace('/(tabs)');
-            }
+            // 2. Navigate to Location screen
+            router.push('/(onboarding)/location');
         } catch (error: any) {
             console.error('Error saving prompts:', error);
-            Alert.alert('Error', error.message || 'Failed to save prompts. Please try again.');
+            Alert.alert('Error', error.message || 'Failed to save prompts.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const filledCount = prompts.filter(p => p.question && p.answer.trim()).length;
-    const canContinue = filledCount >= REQUIRED_PROMPTS && !isSubmitting;
+    // Validation
+    const filledCount = selectedPrompts.filter(p => p !== null).length;
+    const canContinue = filledCount >= 1;
 
-    // Get available questions (exclude already selected ones)
-    const availableQuestions = PROMPT_QUESTIONS.filter(
-        q => !prompts.some(p => p.question === q)
-    );
+    // Filter out prompts that are already selected in OTHER slots
+    const availablePrompts = PREDEFINED_PROMPTS.filter(p => {
+        const isUsed = selectedPrompts.some(sp => sp?.question === p);
+        // It is available if NOT used, OR if it is used by the CURRENT slot (so we can keep it)
+        return !isUsed || (activeSlotIndex !== null && selectedPrompts[activeSlotIndex]?.question === p);
+    });
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+            <StatusBar barStyle="dark-content" />
+
+            <View className="flex-1 px-6 pt-8">
                 {/* Header */}
-                <View className="mt-8 mb-6">
-                    <Text className="text-4xl font-bold text-slate-900 tracking-tight">
-                        Written Prompts
-                    </Text>
-                    <Text className="text-lg text-slate-500 mt-2 font-medium">
-                        Pick replies that help others start a conversation
-                    </Text>
+                <View className="mb-8">
+                    <Text className="text-3xl font-bold text-black mb-2">Written Prompts</Text>
+                    <Text className="text-gray-500 text-base">Add 3 prompts to your profile. 1 is required.</Text>
                 </View>
 
-                {/* Prompt Slots */}
-                <View className="mb-8">
-                    {prompts.map((prompt, index) => (
-                        <View
-                            key={index}
-                            className={`mb-6 p-4 rounded-xl border ${prompt.question ? 'border-purple-100 bg-purple-50/30' : 'border-slate-200 bg-white'
-                                }`}
-                        >
-                            {/* Question Selector */}
-                            <TouchableOpacity
-                                onPress={() => openQuestionPicker(index)}
-                                activeOpacity={0.7}
-                                className="flex-row items-center justify-between"
-                            >
-                                <View className="flex-1 pr-4">
-                                    <Text className={`text-base font-semibold ${prompt.question ? 'text-slate-900' : 'text-slate-400'
-                                        }`}>
-                                        {prompt.question || 'Select a prompt'}
-                                    </Text>
-                                </View>
-                                {!prompt.question && (
-                                    <Ionicons name="add-circle" size={24} color="#94a3b8" />
+                {/* Slots */}
+                <View className="gap-y-4">
+                    {[0, 1, 2].map((index) => {
+                        const data = selectedPrompts[index];
+                        return (
+                            <View key={index} className="relative">
+                                {data ? (
+                                    // Filled State
+                                    <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                        <View className="flex-row justify-between items-start mb-2">
+                                            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                                {data.question}
+                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() => handleClearSlot(index)}
+                                                className="p-1 -mr-2 -mt-2 bg-gray-50 rounded-full"
+                                            >
+                                                <Ionicons name="close" size={16} color="#9ca3af" />
+                                            </TouchableOpacity>
+                                        </View>
+                                        <TouchableOpacity onPress={() => handleSlotPress(index)}>
+                                            <Text className="text-lg text-black leading-6 font-medium">
+                                                {data.answer}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    // Empty State
+                                    <TouchableOpacity
+                                        onPress={() => handleSlotPress(index)}
+                                        className="border-2 border-dashed border-gray-200 rounded-xl p-6 items-center justify-center bg-gray-50 active:bg-gray-100"
+                                    >
+                                        <Text className="text-gray-400 font-medium">+ Select a prompt</Text>
+                                    </TouchableOpacity>
                                 )}
-                                {prompt.question && (
-                                    <Ionicons name="create-outline" size={20} color="#94a3b8" />
-                                )}
-                            </TouchableOpacity>
+                            </View>
+                        );
+                    })}
+                </View>
 
-                            {/* Answer Input */}
-                            {prompt.question && (
-                                <View className="mt-3 relative">
+                <View className="flex-1" />
+
+                {/* Footer */}
+                <ArrowButton
+                    onPress={handleContinue}
+                    disabled={!canContinue}
+                    isLoading={isSubmitting}
+                />
+            </View>
+
+            {/* Modal for Selection & Input */}
+            <Modal
+                visible={isModalVisible}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={closeModal}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    className="flex-1 bg-white"
+                >
+                    <SafeAreaView className="flex-1">
+                        {/* Modal Header */}
+                        <View className="px-6 py-4 border-b border-gray-100 flex-row justify-between items-center bg-white z-10 w-full">
+                            {stepInModal === 'TYPE_ANSWER' ? (
+                                <TouchableOpacity onPress={() => setStepInModal('SELECT_QUESTION')}>
+                                    <Ionicons name="chevron-back" size={24} color="black" />
+                                </TouchableOpacity>
+                            ) : (
+                                <View className="w-6" /> // spacer
+                            )}
+
+                            <Text className="font-bold text-lg text-center flex-1">
+                                {stepInModal === 'SELECT_QUESTION' ? 'Pick a Prompt' : 'Your Answer'}
+                            </Text>
+
+                            <TouchableOpacity onPress={closeModal}>
+                                <Ionicons name="close" size={24} color="black" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {stepInModal === 'SELECT_QUESTION' ? (
+                            // STEP 1: List of Prompts
+                            <ScrollView className="flex-1 px-6">
+                                <View className="py-4 gap-y-1">
+                                    {availablePrompts.map((question) => (
+                                        <TouchableOpacity
+                                            key={question}
+                                            onPress={() => handleSelectQuestion(question)}
+                                            className="py-4 border-b border-gray-50 active:bg-gray-50 -mx-6 px-6"
+                                        >
+                                            <Text className="text-base text-gray-900 font-medium">{question}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                    {availablePrompts.length === 0 && (
+                                        <Text className="text-center text-gray-500 mt-10">
+                                            No more prompts available.
+                                        </Text>
+                                    )}
+                                </View>
+                            </ScrollView>
+                        ) : (
+                            // STEP 2: Input Answer
+                            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                                <View className="flex-1 px-6 pt-6">
+                                    <View className="mb-4">
+                                        <Text className="text-sm font-bold text-gray-500 uppercase mb-2 tracking-wide">
+                                            {tempQuestion}
+                                        </Text>
+                                    </View>
+
                                     <TextInput
-                                        value={prompt.answer}
-                                        onChangeText={(text) => updateAnswer(index, text)}
+                                        className="text-xl text-black leading-7 min-h-[120px]"
                                         placeholder="Type your answer here..."
-                                        placeholderTextColor="#94a3b8"
+                                        placeholderTextColor="#9ca3af"
                                         multiline
-                                        maxLength={MAX_ANSWER_LENGTH}
-                                        className="text-lg text-slate-700 min-h-[60px]"
+                                        autoFocus
+                                        value={tempAnswer}
+                                        onChangeText={setTempAnswer}
+                                        maxLength={140}
                                         style={{ textAlignVertical: 'top' }}
                                     />
 
-                                    <View className="flex-row items-center justify-between mt-2 border-t border-slate-100 pt-2">
-                                        <TouchableOpacity
-                                            onPress={() => clearPrompt(index)}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        >
-                                            <Text className="text-xs font-semibold text-slate-400">
-                                                CLEAR
-                                            </Text>
-                                        </TouchableOpacity>
-                                        <Text className={`text-xs ${prompt.answer.length >= MAX_ANSWER_LENGTH ? 'text-red-500' : 'text-slate-300'
-                                            }`}>
-                                            {prompt.answer.length}/{MAX_ANSWER_LENGTH}
+                                    <View className="items-end mt-2">
+                                        <Text className={`text-xs ${tempAnswer.length > 120 ? 'text-red-500' : 'text-gray-400'}`}>
+                                            {140 - tempAnswer.length}
                                         </Text>
                                     </View>
+
+                                    <View className="flex-1" />
+
+                                    <View className="mb-4">
+                                        <TouchableOpacity
+                                            onPress={handleSavePrompt}
+                                            disabled={!tempAnswer.trim()}
+                                            className={`w-full py-4 rounded-full items-center ${tempAnswer.trim() ? 'bg-black' : 'bg-gray-200'
+                                                }`}
+                                        >
+                                            <Text className={`font-bold text-base ${tempAnswer.trim() ? 'text-white' : 'text-gray-400'
+                                                }`}>
+                                                Save Answer
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            )}
-                        </View>
-                    ))}
-                </View>
-
-            </ScrollView>
-
-            {/* Bottom Actions */}
-            <View className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 blur-sm pt-4 border-t border-slate-100">
-                <TouchableOpacity
-                    onPress={handleContinue}
-                    disabled={!canContinue}
-                    activeOpacity={0.8}
-                    className={`w-full py-4 rounded-full items-center justify-center ${canContinue ? 'bg-purple-600 shadow-lg shadow-purple-200' : 'bg-slate-200'
-                        }`}
-                >
-                    {isSubmitting ? (
-                        <ActivityIndicator color={canContinue ? "white" : "#94a3b8"} />
-                    ) : (
-                        <Text className={`text-lg font-bold ${canContinue ? 'text-white' : 'text-slate-400'}`}>
-                            Complete Profile
-                        </Text>
-                    )}
-                </TouchableOpacity>
-
-                {filledCount >= REQUIRED_PROMPTS && filledCount < MAX_PROMPTS && (
-                    <TouchableOpacity
-                        onPress={handleContinue}
-                        disabled={isSubmitting}
-                        className="mt-4 items-center"
-                    >
-                        <Text className="text-slate-500 font-medium">
-                            Skip remaining prompts
-                        </Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* Question Picker Modal */}
-            <Modal
-                visible={showQuestionPicker}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowQuestionPicker(false)}
-            >
-                <View className="flex-1 bg-black/40">
-                    <TouchableOpacity
-                        className="flex-1"
-                        activeOpacity={1}
-                        onPress={() => setShowQuestionPicker(false)}
-                    />
-                    <View className="bg-white rounded-t-3xl max-h-[80%] shadow-2xl">
-                        <View className="p-6 border-b border-slate-100 flex-row items-center justify-between">
-                            <Text className="text-xl font-bold text-slate-900">
-                                Choose a Prompt
-                            </Text>
-                            <TouchableOpacity
-                                onPress={() => setShowQuestionPicker(false)}
-                                className="w-8 h-8 items-center justify-center bg-slate-100 rounded-full"
-                            >
-                                <Ionicons name="close" size={20} color="#64748b" />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-                            {availableQuestions.map((question, idx) => (
-                                <TouchableOpacity
-                                    key={idx}
-                                    onPress={() => selectQuestion(question)}
-                                    activeOpacity={0.7}
-                                    className="px-6 py-5 border-b border-slate-50 active:bg-purple-50"
-                                >
-                                    <Text className="text-base text-slate-700 font-medium leading-6">
-                                        {question}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                            <View className="h-10" />
-                        </ScrollView>
-                    </View>
-                </View>
+                            </TouchableWithoutFeedback>
+                        )}
+                    </SafeAreaView>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );

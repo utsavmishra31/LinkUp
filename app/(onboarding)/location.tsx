@@ -62,10 +62,20 @@ export default function LocationPermission() {
                     return;
                 }
 
+                // Mark onboarding as completed
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({ onboardingCompleted: true })
+                    .eq('id', user.id);
+
+                if (updateError) {
+                    console.error('Error updating onboarding status:', updateError);
+                }
+
                 await refreshProfile();
 
-                // Navigate to photos upload
-                router.push('/(onboarding)/availability');
+                // Navigate to Dashboard (Tabs)
+                router.replace('/(tabs)');
             }
         } catch (error) {
             console.error('Error requesting location:', error);
@@ -189,7 +199,7 @@ export default function LocationPermission() {
                             onPress={() => {
                                 Alert.alert(
                                     'Skip Location',
-                                    'You can enable location later in settings. You will now proceed to add your photos.',
+                                    'You can enable location later in settings. You will now proceed to finish onboarding.',
                                     [
                                         { text: 'Cancel', style: 'cancel' },
                                         {
@@ -197,8 +207,18 @@ export default function LocationPermission() {
                                             style: 'destructive',
                                             onPress: async () => {
                                                 if (user) {
+                                                    // Mark onboarding as completed
+                                                    const { error: updateError } = await supabase
+                                                        .from('users')
+                                                        .update({ onboardingCompleted: true })
+                                                        .eq('id', user.id);
+
+                                                    if (updateError) {
+                                                        console.error('Error updating onboarding status:', updateError);
+                                                    }
+
                                                     await refreshProfile();
-                                                    router.push('/(onboarding)/availability');
+                                                    router.replace('/(tabs)');
                                                 }
                                             },
                                         },

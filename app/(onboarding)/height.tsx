@@ -2,7 +2,6 @@ import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
@@ -168,44 +167,13 @@ export default function HeightSelection() {
             await refreshProfile();
             await refreshProfile();
 
-            // Check if location permission is already granted
-            const { status } = await Location.getForegroundPermissionsAsync();
-
-            if (status === 'granted') {
-                try {
-                    // Permission granted, get current location and save silently
-                    const location = await Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Balanced,
-                    });
-
-                    const { latitude, longitude } = location.coords;
-
-                    // Save location to database using RPC function
-                    await supabase.rpc('set_profile_location', {
-                        uid: user.id,
-                        lat: latitude,
-                        lng: longitude,
-                    });
-
-                    // Refresh profile again to ensure location is updated in local state if needed
-                    await refreshProfile();
-
-                    // Skip location page and go to availability
-                    router.push('/(onboarding)/availability');
-                } catch (locError) {
-                    console.error('Error saving location silently:', locError);
-                    // Fallback to location page if silent save fails
-                    router.push('/(onboarding)/location');
-                }
-            } else {
-                // Permission not granted, go to location request page
-                router.push('/(onboarding)/location');
-            }
         } catch (error) {
             console.error('Error updating height:', error);
             Alert.alert('Error', 'Failed to save height.');
         } finally {
             setIsSubmitting(false);
+            // Navigate to availability directly
+            router.push('/(onboarding)/availability');
         }
     };
 

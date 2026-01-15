@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/auth/useAuth';
 import { useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -10,6 +11,9 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
     useEffect(() => {
         if (loading) return;
+
+        // Hide splash screen once we know the auth state
+        SplashScreen.hideAsync();
 
         const inAuthGroup = segments[0] === '(auth)';
         const inOnboardingGroup = segments[0] === '(onboarding)';
@@ -39,11 +43,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     // Show loading screen while checking auth state or profile
     // We only show loading if we have a user but no profile yet (and we are expecting one)
     if (loading) {
-        return (
-            <View className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#000" />
-            </View>
-        );
+        return null; // Don't render anything while splash screen is visible
     }
 
     const inAuthGroup = segments[0] === '(auth)';

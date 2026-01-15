@@ -38,7 +38,6 @@ export default function InterestedInSelection() {
                 .from('users')
                 .update({
                     interestedIn: selectedGenders,
-                    // onboardingCompleted: true, // Moved to next step
                 })
                 .eq('id', user.id);
 

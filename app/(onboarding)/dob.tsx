@@ -82,7 +82,6 @@ export default function DateOfBirth() {
                 .update({
                     dob: birthDate.toISOString().split('T')[0], // Send YYYY-MM-DD only
                     age: age,
-                    // onboardingCompleted: true, // Moved to gender selection
                 })
                 .eq('id', user.id);
 

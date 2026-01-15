@@ -29,7 +29,6 @@ export default function GenderSelection() {
                 .from('users')
                 .update({
                     gender: selectedGender,
-                    // onboardingCompleted: true, // Moved to next step
                 })
                 .eq('id', user.id);
 
