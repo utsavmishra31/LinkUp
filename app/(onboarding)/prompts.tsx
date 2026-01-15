@@ -8,13 +8,14 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
-    SafeAreaView,
     ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 const MAX_ANSWER_LENGTH = 150;
@@ -54,6 +55,7 @@ interface PromptSlot {
     answer: string;
 }
 
+// ... (imports remain the same, I will assume the imports block is outside the replacement range if I start from line 57, but wait, the prompt asks to rewrite the UI. I can replace the whole function body.)
 export default function PromptsPage() {
     const [prompts, setPrompts] = useState<PromptSlot[]>([
         { question: null, answer: '' },
@@ -171,163 +173,95 @@ export default function PromptsPage() {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-gradient-to-br from-purple-50 to-pink-50">
-            <ScrollView className="flex-1 px-6 pt-12" showsVerticalScrollIndicator={false}>
+        <SafeAreaView className="flex-1 bg-white">
+            <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <View className="mb-8">
-                    <Text className="text-3xl font-bold text-black mb-2">
-                        Show Your Personality
+                <View className="mt-8 mb-6">
+                    <Text className="text-4xl font-bold text-slate-900 tracking-tight">
+                        Written Prompts
                     </Text>
-                    <Text className="text-base text-gray-600">
-                        Answer prompts to help others get to know you better
+                    <Text className="text-lg text-slate-500 mt-2 font-medium">
+                        Pick replies that help others start a conversation
                     </Text>
-                    <View className="mt-3 flex-row items-center">
-                        <Ionicons
-                            name={filledCount >= REQUIRED_PROMPTS ? "checkmark-circle" : "chatbubbles"}
-                            size={20}
-                            color={filledCount >= REQUIRED_PROMPTS ? "#10b981" : "#9333ea"}
-                        />
-                        <Text className={`ml-2 font-semibold ${filledCount >= REQUIRED_PROMPTS ? 'text-green-600' : 'text-purple-600'}`}>
-                            {filledCount} / {REQUIRED_PROMPTS} required
-                        </Text>
-                        {filledCount > REQUIRED_PROMPTS && (
-                            <Text className="ml-4 text-gray-500">
-                                +{filledCount - REQUIRED_PROMPTS} bonus
-                            </Text>
-                        )}
-                    </View>
                 </View>
 
                 {/* Prompt Slots */}
-                <View className="mb-8 space-y-4">
+                <View className="mb-8">
                     {prompts.map((prompt, index) => (
                         <View
                             key={index}
-                            className="mb-4 rounded-3xl overflow-hidden"
-                            style={{
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 12,
-                                elevation: 5,
-                            }}
+                            className={`mb-6 p-4 rounded-xl border ${prompt.question ? 'border-purple-100 bg-purple-50/30' : 'border-slate-200 bg-white'
+                                }`}
                         >
-                            <View className="bg-white p-5">
-                                {/* Question Selector */}
-                                <TouchableOpacity
-                                    onPress={() => openQuestionPicker(index)}
-                                    activeOpacity={0.7}
-                                    className={`flex-row items-center justify-between p-4 rounded-2xl ${prompt.question ? 'bg-purple-50' : 'bg-gray-50'
-                                        }`}
-                                >
-                                    <View className="flex-1">
-                                        <Text className={`font-semibold ${prompt.question ? 'text-purple-900' : 'text-gray-400'
+                            {/* Question Selector */}
+                            <TouchableOpacity
+                                onPress={() => openQuestionPicker(index)}
+                                activeOpacity={0.7}
+                                className="flex-row items-center justify-between"
+                            >
+                                <View className="flex-1 pr-4">
+                                    <Text className={`text-base font-semibold ${prompt.question ? 'text-slate-900' : 'text-slate-400'
+                                        }`}>
+                                        {prompt.question || 'Select a prompt'}
+                                    </Text>
+                                </View>
+                                {!prompt.question && (
+                                    <Ionicons name="add-circle" size={24} color="#94a3b8" />
+                                )}
+                                {prompt.question && (
+                                    <Ionicons name="create-outline" size={20} color="#94a3b8" />
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Answer Input */}
+                            {prompt.question && (
+                                <View className="mt-3 relative">
+                                    <TextInput
+                                        value={prompt.answer}
+                                        onChangeText={(text) => updateAnswer(index, text)}
+                                        placeholder="Type your answer here..."
+                                        placeholderTextColor="#94a3b8"
+                                        multiline
+                                        maxLength={MAX_ANSWER_LENGTH}
+                                        className="text-lg text-slate-700 min-h-[60px]"
+                                        style={{ textAlignVertical: 'top' }}
+                                    />
+
+                                    <View className="flex-row items-center justify-between mt-2 border-t border-slate-100 pt-2">
+                                        <TouchableOpacity
+                                            onPress={() => clearPrompt(index)}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        >
+                                            <Text className="text-xs font-semibold text-slate-400">
+                                                CLEAR
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <Text className={`text-xs ${prompt.answer.length >= MAX_ANSWER_LENGTH ? 'text-red-500' : 'text-slate-300'
                                             }`}>
-                                            {prompt.question || 'Select a prompt...'}
+                                            {prompt.answer.length}/{MAX_ANSWER_LENGTH}
                                         </Text>
                                     </View>
-                                    <Ionicons
-                                        name="chevron-down"
-                                        size={20}
-                                        color={prompt.question ? "#9333ea" : "#9ca3af"}
-                                    />
-                                </TouchableOpacity>
-
-                                {/* Answer Input */}
-                                {prompt.question && (
-                                    <View className="mt-4">
-                                        <TextInput
-                                            value={prompt.answer}
-                                            onChangeText={(text) => updateAnswer(index, text)}
-                                            placeholder="Your answer..."
-                                            placeholderTextColor="#9ca3af"
-                                            multiline
-                                            maxLength={MAX_ANSWER_LENGTH}
-                                            className="bg-gray-50 rounded-2xl p-4 text-base text-gray-900 min-h-[100px]"
-                                            style={{ textAlignVertical: 'top' }}
-                                        />
-                                        <View className="flex-row items-center justify-between mt-2 px-2">
-                                            <Text className={`text-xs ${prompt.answer.length >= MAX_ANSWER_LENGTH
-                                                    ? 'text-red-500'
-                                                    : 'text-gray-400'
-                                                }`}>
-                                                {prompt.answer.length} / {MAX_ANSWER_LENGTH}
-                                            </Text>
-                                            {prompt.answer.trim() && (
-                                                <TouchableOpacity
-                                                    onPress={() => clearPrompt(index)}
-                                                    className="flex-row items-center"
-                                                >
-                                                    <Ionicons name="close-circle" size={16} color="#ef4444" />
-                                                    <Text className="text-red-500 text-xs ml-1">Clear</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                    </View>
-                                )}
-
-                                {/* Slot Number Badge */}
-                                <View className="absolute top-3 right-3">
-                                    <View className={`w-8 h-8 rounded-full items-center justify-center ${prompt.question && prompt.answer.trim()
-                                            ? 'bg-green-500'
-                                            : index < REQUIRED_PROMPTS
-                                                ? 'bg-purple-200'
-                                                : 'bg-gray-200'
-                                        }`}>
-                                        {prompt.question && prompt.answer.trim() ? (
-                                            <Ionicons name="checkmark" size={16} color="white" />
-                                        ) : (
-                                            <Text className={`font-bold text-sm ${index < REQUIRED_PROMPTS ? 'text-purple-700' : 'text-gray-500'
-                                                }`}>
-                                                {index + 1}
-                                            </Text>
-                                        )}
-                                    </View>
                                 </View>
-                            </View>
+                            )}
                         </View>
                     ))}
                 </View>
 
-                {/* Tips */}
-                <View className="mb-8 p-4 bg-purple-50 rounded-2xl">
-                    <View className="flex-row items-start mb-2">
-                        <Ionicons name="bulb" size={20} color="#9333ea" />
-                        <Text className="ml-2 font-semibold text-purple-900">Tips</Text>
-                    </View>
-                    <Text className="text-sm text-purple-700 ml-7">
-                        • Be authentic and genuine{'\n'}
-                        • Show your personality and humor{'\n'}
-                        • Keep it light and positive{'\n'}
-                        • Make it easy to start a conversation
-                    </Text>
-                </View>
             </ScrollView>
 
             {/* Bottom Actions */}
-            <View className="px-6 pb-8 pt-4 border-t border-gray-100 bg-white">
+            <View className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 blur-sm pt-4 border-t border-slate-100">
                 <TouchableOpacity
                     onPress={handleContinue}
                     disabled={!canContinue}
                     activeOpacity={0.8}
-                    className={`rounded-full py-4 items-center justify-center ${canContinue ? 'bg-purple-500' : 'bg-gray-300'
+                    className={`w-full py-4 rounded-full items-center justify-center ${canContinue ? 'bg-purple-600 shadow-lg shadow-purple-200' : 'bg-slate-200'
                         }`}
-                    style={
-                        canContinue
-                            ? {
-                                shadowColor: '#9333ea',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 8,
-                                elevation: 5,
-                            }
-                            : {}
-                    }
                 >
                     {isSubmitting ? (
-                        <ActivityIndicator color="white" />
+                        <ActivityIndicator color={canContinue ? "white" : "#94a3b8"} />
                     ) : (
-                        <Text className={`text-lg font-bold ${canContinue ? 'text-white' : 'text-gray-500'}`}>
+                        <Text className={`text-lg font-bold ${canContinue ? 'text-white' : 'text-slate-400'}`}>
                             Complete Profile
                         </Text>
                     )}
@@ -337,9 +271,9 @@ export default function PromptsPage() {
                     <TouchableOpacity
                         onPress={handleContinue}
                         disabled={isSubmitting}
-                        className="mt-3 py-3 items-center"
+                        className="mt-4 items-center"
                     >
-                        <Text className="text-gray-500 text-base">
+                        <Text className="text-slate-500 font-medium">
                             Skip remaining prompts
                         </Text>
                     </TouchableOpacity>
@@ -353,37 +287,38 @@ export default function PromptsPage() {
                 animationType="slide"
                 onRequestClose={() => setShowQuestionPicker(false)}
             >
-                <View className="flex-1 bg-black/50">
+                <View className="flex-1 bg-black/40">
                     <TouchableOpacity
                         className="flex-1"
                         activeOpacity={1}
                         onPress={() => setShowQuestionPicker(false)}
                     />
-                    <View className="bg-white rounded-t-3xl max-h-[70%]">
-                        <View className="p-6 border-b border-gray-100">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-xl font-bold text-black">
-                                    Choose a Prompt
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => setShowQuestionPicker(false)}
-                                    className="w-8 h-8 items-center justify-center"
-                                >
-                                    <Ionicons name="close" size={24} color="#000" />
-                                </TouchableOpacity>
-                            </View>
+                    <View className="bg-white rounded-t-3xl max-h-[80%] shadow-2xl">
+                        <View className="p-6 border-b border-slate-100 flex-row items-center justify-between">
+                            <Text className="text-xl font-bold text-slate-900">
+                                Choose a Prompt
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => setShowQuestionPicker(false)}
+                                className="w-8 h-8 items-center justify-center bg-slate-100 rounded-full"
+                            >
+                                <Ionicons name="close" size={20} color="#64748b" />
+                            </TouchableOpacity>
                         </View>
-                        <ScrollView className="px-6 py-4" showsVerticalScrollIndicator={false}>
+                        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                             {availableQuestions.map((question, idx) => (
                                 <TouchableOpacity
                                     key={idx}
                                     onPress={() => selectQuestion(question)}
                                     activeOpacity={0.7}
-                                    className="py-4 border-b border-gray-100"
+                                    className="px-6 py-5 border-b border-slate-50 active:bg-purple-50"
                                 >
-                                    <Text className="text-base text-gray-900">{question}</Text>
+                                    <Text className="text-base text-slate-700 font-medium leading-6">
+                                        {question}
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
+                            <View className="h-10" />
                         </ScrollView>
                     </View>
                 </View>

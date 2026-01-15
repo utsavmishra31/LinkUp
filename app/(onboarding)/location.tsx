@@ -65,7 +65,7 @@ export default function LocationPermission() {
                 await refreshProfile();
 
                 // Navigate to photos upload
-                router.push('/(onboarding)/photos');
+                router.push('/(onboarding)/availability');
             }
         } catch (error) {
             console.error('Error requesting location:', error);
@@ -198,7 +198,7 @@ export default function LocationPermission() {
                                             onPress: async () => {
                                                 if (user) {
                                                     await refreshProfile();
-                                                    router.push('/(onboarding)/photos');
+                                                    router.push('/(onboarding)/availability');
                                                 }
                                             },
                                         },

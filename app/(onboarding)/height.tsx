@@ -165,7 +165,7 @@ export default function HeightSelection() {
             if (error) throw error;
 
             await refreshProfile();
-            router.push('/(onboarding)/availability');
+            router.push('/(onboarding)/location');
         } catch (error) {
             console.error('Error updating height:', error);
             Alert.alert('Error', 'Failed to save height.');

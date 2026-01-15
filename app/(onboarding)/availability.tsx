@@ -155,7 +155,7 @@ export default function AvailabilitySelection() {
             }
 
             // Navigate to location permission page
-            router.push('/(onboarding)/location');
+            router.push('/(onboarding)/photos');
         } catch (error) {
             console.error('Error updating availability:', error);
             Alert.alert('Error', 'Failed to save availability.');
