@@ -154,6 +154,16 @@ export default function AvailabilitySelection() {
                 if (error) throw error;
             }
 
+            // Update onboarding step on users table
+            const { error: userError } = await supabase
+                .from('users')
+                .update({ onboardingStep: 8 })
+                .eq('id', user.id);
+
+            if (userError) throw userError;
+
+            await refreshProfile();
+
             // Navigate to location permission page
             router.push('/(onboarding)/photos');
         } catch (error) {

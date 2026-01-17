@@ -36,6 +36,7 @@ export default function NameOnboarding() {
                     email: user.email,
                     displayName: firstName.trim(),
                     surname: lastName.trim() || null,
+                    onboardingStep: 2,
                 })
 
             if (error) throw error;

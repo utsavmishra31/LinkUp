@@ -29,12 +29,13 @@ export default function GenderSelection() {
                 .from('users')
                 .update({
                     gender: selectedGender,
+                    onboardingStep: 4,
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            // await refreshProfile(); // No need to refresh yet
+            await refreshProfile();
             router.push('/(onboarding)/looking-for');
         } catch (error) {
             console.error('Error updating gender:', error);

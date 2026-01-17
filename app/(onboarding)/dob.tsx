@@ -82,11 +82,13 @@ export default function DateOfBirth() {
                 .update({
                     dob: birthDate.toISOString().split('T')[0], // Send YYYY-MM-DD only
                     age: age,
+                    onboardingStep: 3,
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
+            await refreshProfile();
             router.push('/(onboarding)/gender');
         } catch (error) {
             console.error('Error updating DOB:', error);

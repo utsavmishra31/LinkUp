@@ -159,12 +159,12 @@ export default function HeightSelection() {
                 .from('users')
                 .update({
                     height: `${selectedHeight.feet} ${selectedHeight.inches}`,
+                    onboardingStep: 7,
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            await refreshProfile();
             await refreshProfile();
 
         } catch (error) {

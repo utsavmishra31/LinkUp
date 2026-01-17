@@ -58,12 +58,13 @@ export default function LookingForSelection() {
                 .from('users')
                 .update({
                     lookingFor: selectedOptions,
+                    onboardingStep: 5,
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            // await refreshProfile(); 
+            await refreshProfile();
             router.push('/(onboarding)/interested-in');
         } catch (error) {
             console.error('Error updating lookingFor:', error);

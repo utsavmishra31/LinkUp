@@ -38,12 +38,13 @@ export default function InterestedInSelection() {
                 .from('users')
                 .update({
                     interestedIn: selectedGenders,
+                    onboardingStep: 6,
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
 
-            // await refreshProfile();
+            await refreshProfile();
             router.push('/(onboarding)/height');
 
         } catch (error) {

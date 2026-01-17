@@ -25,6 +25,37 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
                 // User needs onboarding
                 if (!inOnboardingGroup) {
                     router.replace('/(onboarding)/name');
+                } else {
+                    // Check specific step and redirect if needed
+                    // Map step number to route
+                    const steps: Record<number, string> = {
+                        1: '/(onboarding)/name',
+                        2: '/(onboarding)/dob',
+                        3: '/(onboarding)/gender',
+                        4: '/(onboarding)/looking-for',
+                        5: '/(onboarding)/interested-in',
+                        6: '/(onboarding)/height',
+                        7: '/(onboarding)/availability',
+                        8: '/(onboarding)/photos',
+                        9: '/(onboarding)/prompts',
+                        10: '/(onboarding)/location'
+                    };
+
+                    const currentStep = profile?.onboardingStep || 1;
+                    const targetRoute = steps[currentStep] || '/(onboarding)/name';
+
+                    // define the route path relative to the app root for comparison
+                    // usually useSegments returns array like ["(onboarding)", "name"]
+                    // so we construct current path
+                    const currentPath = `/${segments.join('/')}`;
+
+                    // Simple check: if we are not on the target route, move there.
+                    // Note: This might need more robust path checking if segments vary.
+                    if (currentPath !== targetRoute) {
+                        // Avoid infinite loops or fighting with navigation if user is consciously moving back?
+                        // For strictly linear onboarding, we force them to the latest step.
+                        router.replace(targetRoute as any);
+                    }
                 }
             } else if (profile && profile.onboardingCompleted) {
                 // User is fully onboarded

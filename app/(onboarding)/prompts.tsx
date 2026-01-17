@@ -47,7 +47,7 @@ interface PromptData {
 
 export default function PromptsScreen() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, refreshProfile } = useAuth();
 
     // --- State ---
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null, null, null]);
@@ -139,6 +139,16 @@ export default function PromptsScreen() {
                 });
 
             if (profileError) throw profileError;
+
+            // Update onboarding step
+            const { error: userError } = await supabase
+                .from('users')
+                .update({ onboardingStep: 10 })
+                .eq('id', user.id);
+
+            if (userError) throw userError;
+
+            await refreshProfile();
 
             // 2. Navigate to Location screen
             router.push('/(onboarding)/location');

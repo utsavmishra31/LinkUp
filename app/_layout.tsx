@@ -1,6 +1,7 @@
 import '../global.css';
 
 import AuthWrapper from '@/components/AuthWrapper';
+import { AuthProvider } from '@/lib/auth/AuthContext';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -20,14 +21,16 @@ GoogleSignin.configure({
 
 export default function RootLayout() {
   return (
-    <AuthWrapper>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+    <AuthProvider>
+      <AuthWrapper>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
 
-      <StatusBar style="auto" />
-    </AuthWrapper>
+        <StatusBar style="auto" />
+      </AuthWrapper>
+    </AuthProvider>
   );
 }
