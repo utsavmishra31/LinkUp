@@ -52,11 +52,11 @@ const DayCard = ({ day, isSelected, onPress }: DayCardProps) => {
             onPress={onPress}
             activeOpacity={0.7}
             className={`items-center justify-center py-3 rounded-2xl border-2 flex-1 h-32 ${isSelected
-                ? 'bg-purple-500 border-purple-500'
+                ? 'bg-black border-black'
                 : 'bg-white border-gray-200'
                 }`}
             style={{
-                shadowColor: isSelected ? '#9333ea' : '#000',
+                shadowColor: isSelected ? '#000' : '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: isSelected ? 0.3 : 0.05,
                 shadowRadius: 4,
@@ -76,15 +76,15 @@ const DayCard = ({ day, isSelected, onPress }: DayCardProps) => {
                 {day.dayNumber}
             </Text>
             <Text
-                className={`text-xs font-medium mt-1 ${isSelected ? 'text-purple-100' : 'text-gray-400'
+                className={`text-xs font-medium mt-1 ${isSelected ? 'text-gray-400' : 'text-gray-400'
                     }`}
             >
                 {day.month}
             </Text>
             {day.isToday && (
-                <View className={`mt-1 px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20' : 'bg-purple-100'
+                <View className={`mt-1 px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20' : 'bg-gray-100'
                     }`}>
-                    <Text className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-purple-600'
+                    <Text className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-black'
                         }`}>
                         Today
                     </Text>
@@ -211,7 +211,7 @@ export default function AvailabilitySelection() {
                     </View>
                 </View>
 
-                <View className="mt-8 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                <View className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <Text className="text-sm text-gray-700">
                         <Text className="font-semibold">Note:</Text> Choose the day that works best for you. You can always update this later!
                     </Text>

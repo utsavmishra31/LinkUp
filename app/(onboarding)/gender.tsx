@@ -49,12 +49,12 @@ export default function GenderSelection() {
         <TouchableOpacity
             onPress={() => setSelectedGender(value)}
             className={`w-full p-4 rounded-xl border mb-4 ${selectedGender === value
-                ? 'border-purple-600 bg-purple-50'
+                ? 'border-black bg-gray-50'
                 : 'border-gray-200 bg-white'
                 }`}
         >
             <Text
-                className={`text-xl font-medium ${selectedGender === value ? 'text-purple-600' : 'text-gray-600'
+                className={`text-xl font-medium ${selectedGender === value ? 'text-black' : 'text-gray-600'
                     }`}
             >
                 {label}

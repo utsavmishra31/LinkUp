@@ -165,7 +165,7 @@ export default function LocationPermission() {
                 {/* Location Icon Illustration */}
                 <View className="items-center justify-center flex-1">
                     <View
-                        className="w-40 h-40 rounded-full bg-purple-100 items-center justify-center mb-8"
+                        className="w-40 h-40 rounded-full bg-gray-100 items-center justify-center mb-8"
                         style={{
                             shadowColor: '#9333ea',
                             shadowOffset: { width: 0, height: 4 },
@@ -175,16 +175,16 @@ export default function LocationPermission() {
                         }}
                     >
                         {hasExistingPermission ? (
-                            <Ionicons name="rocket" size={80} color="#9333ea" />
+                            <Ionicons name="rocket" size={80} color="#000000" />
                         ) : (
-                            <Ionicons name="location" size={80} color="#9333ea" />
+                            <Ionicons name="location" size={80} color="#000000" />
                         )}
                     </View>
 
                     {/* Benefits List */}
                     <View className="w-full space-y-4">
                         <View className="flex-row items-start">
-                            <View className="w-8 h-8 rounded-full bg-purple-500 items-center justify-center mr-3 mt-0.5">
+                            <View className="w-8 h-8 rounded-full bg-black items-center justify-center mr-3 mt-0.5">
                                 <Ionicons name="people" size={16} color="white" />
                             </View>
                             <View className="flex-1">
@@ -198,7 +198,7 @@ export default function LocationPermission() {
                         </View>
 
                         <View className="flex-row items-start">
-                            <View className="w-8 h-8 rounded-full bg-purple-500 items-center justify-center mr-3 mt-0.5">
+                            <View className="w-8 h-8 rounded-full bg-black items-center justify-center mr-3 mt-0.5">
                                 <Ionicons name="shield-checkmark" size={16} color="white" />
                             </View>
                             <View className="flex-1">
@@ -212,7 +212,7 @@ export default function LocationPermission() {
                         </View>
 
                         <View className="flex-row items-start">
-                            <View className="w-8 h-8 rounded-full bg-purple-500 items-center justify-center mr-3 mt-0.5">
+                            <View className="w-8 h-8 rounded-full bg-black items-center justify-center mr-3 mt-0.5">
                                 <Ionicons name="compass" size={16} color="white" />
                             </View>
                             <View className="flex-1">
@@ -236,9 +236,9 @@ export default function LocationPermission() {
                                     onPress={handleStartJourney}
                                     disabled={isLoading}
                                     activeOpacity={0.8}
-                                    className="bg-purple-500 rounded-full py-4 items-center justify-center"
+                                    className="bg-black rounded-full py-4 items-center justify-center"
                                     style={{
-                                        shadowColor: '#9333ea',
+                                        shadowColor: '#000',
                                         shadowOffset: { width: 0, height: 4 },
                                         shadowOpacity: 0.3,
                                         shadowRadius: 8,
@@ -261,9 +261,9 @@ export default function LocationPermission() {
                                     onPress={requestLocationPermission}
                                     disabled={isLoading}
                                     activeOpacity={0.8}
-                                    className="bg-purple-500 rounded-full py-4 items-center justify-center"
+                                    className="bg-black rounded-full py-4 items-center justify-center"
                                     style={{
-                                        shadowColor: '#9333ea',
+                                        shadowColor: '#000',
                                         shadowOffset: { width: 0, height: 4 },
                                         shadowOpacity: 0.3,
                                         shadowRadius: 8,
@@ -285,7 +285,7 @@ export default function LocationPermission() {
                         </>
                     ) : (
                         <View className="items-center">
-                            <ActivityIndicator size="large" color="#9333ea" />
+                            <ActivityIndicator size="large" color="#000000" />
                             <Text className="text-gray-600 mt-4">Setting up your profile...</Text>
                         </View>
                     )}

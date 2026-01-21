@@ -95,12 +95,12 @@ export default function LookingForSelection() {
                                     key={option.value}
                                     onPress={() => toggleOption(option.value)}
                                     className={`px-4 py-3 rounded-xl border ${isSelected
-                                        ? 'border-purple-600 bg-purple-50'
+                                        ? 'border-black bg-gray-50'
                                         : 'border-gray-200 bg-white'
                                         }`}
                                 >
                                     <Text
-                                        className={`text-base font-medium ${isSelected ? 'text-purple-600' : 'text-gray-600'
+                                        className={`text-base font-medium ${isSelected ? 'text-black' : 'text-gray-600'
                                             }`}
                                     >
                                         {option.label}
