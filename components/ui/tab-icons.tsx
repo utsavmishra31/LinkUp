@@ -1,0 +1,112 @@
+import React from 'react';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+interface IconProps {
+    color: string;
+    size?: number;
+    focused?: boolean;
+}
+
+export const HomeIcon = ({ color, size = 24, focused }: IconProps) => {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M12 1.6L2.4 9.2C2.02222 9.5 1.8 10 1.8 10.5V20.8C1.8 21.4627 2.33726 22 3 22H9C9.66274 22 10.2 21.4627 10.2 20.8V14.8H13.8V20.8C13.8 21.4627 14.3373 22 15 22H21C21.6627 22 22.2 21.4627 22.2 20.8V10.5C22.2 10 21.9778 9.5 21.6 9.2L12 1.6Z"
+                fill={focused ? color : 'none'}
+                stroke={color}
+                strokeWidth={focused ? 0 : 2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </Svg>
+    );
+};
+
+export const LikeIcon = ({ color, size = 24, focused }: IconProps) => {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M12.1 6.64391C12.1 6.64391 14.28 2.20391 17.76 2.20391C20.67 2.20391 23 4.54391 23 7.42391C23 13.9139 12.1 21.3539 12.1 21.3539C12.1 21.3539 1.2 13.9139 1.2 7.42391C1.2 4.54391 3.53 2.20391 6.44 2.20391C9.92 2.20391 12.1 6.64391 12.1 6.64391Z"
+                fill={focused ? color : 'none'}
+                stroke={color}
+                strokeWidth={focused ? 0 : 2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </Svg>
+    );
+};
+
+export const GlobalIcon = ({ color, size = 24, focused }: IconProps) => {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Circle
+                cx="12"
+                cy="12"
+                r="10"
+                fill={focused ? color : 'none'}
+                stroke={color}
+                strokeWidth={focused ? 0 : 2}
+            />
+            <Path
+                d="M2 12H22"
+                stroke={focused ? 'white' : color}
+                strokeWidth={2}
+                strokeLinecap="round"
+            />
+            <Path
+                d="M12 2C14.5013 4.73835 15.9228 8.29203 16 12C15.9228 15.708 14.5013 19.2616 12 22C9.49872 19.2616 8.07725 15.708 8 12C8.07725 8.29203 9.49872 4.73835 12 2Z"
+                fill={focused ? 'none' : 'none'}
+                stroke={focused ? 'white' : color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </Svg>
+    );
+};
+
+export const MessagesIcon = ({ color, size = 24, focused }: IconProps) => {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M22 2L11 13"
+                stroke={color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <Path
+                d="M22 2L15 22L11 13L2 9L22 2Z"
+                fill={focused ? color : 'none'}
+                stroke={color}
+                strokeWidth={focused ? 0 : 2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </Svg>
+    );
+};
+
+export const ProfileIcon = ({ color, size = 24, focused }: IconProps) => {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21"
+                stroke={color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill={focused ? color : 'none'}
+            />
+            <Circle
+                cx="12"
+                cy="7"
+                r="4"
+                stroke={color}
+                strokeWidth={focused ? 0 : 2}
+                fill={focused ? color : 'none'}
+            />
+        </Svg>
+    );
+};
