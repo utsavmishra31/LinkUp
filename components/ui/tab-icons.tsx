@@ -70,19 +70,9 @@ export const MessagesIcon = ({ color, size = 24, focused }: IconProps) => {
     return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
             <Path
-                d="M22 2L11 13"
-                stroke={color}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <Path
-                d="M22 2L15 22L11 13L2 9L22 2Z"
-                fill={focused ? color : 'none'}
-                stroke={color}
-                strokeWidth={focused ? 0 : 2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                d="M1.94619 9.31543C1.42365 9.14125 1.41953 8.86022 1.95694 8.68108L21.0432 2.31901C21.5716 2.14285 21.8747 2.43866 21.7265 2.95694L16.2733 22.0432C16.1226 22.5716 15.8179 22.5894 15.5945 22.0808L12.0003 14.0001L18.0001 6.00012L10.0002 12.0001L1.94619 9.31543Z"
+                fill={focused ? color : color}
+                stroke="none"
             />
         </Svg>
     );
