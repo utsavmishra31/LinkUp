@@ -1,6 +1,7 @@
 import { appleSignIn } from '@/lib/auth/appleAuth';
 import { googleSignIn } from '@/lib/auth/googleAuth';
 import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import type { User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('*')
+                .select('*, photos(*)')
                 .eq('id', userId)
                 .maybeSingle();
 
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error('Error fetching profile:', error);
             } else {
                 setProfile(data);
+                AsyncStorage.setItem('user_profile', JSON.stringify(data));
             }
         } catch (error) {
             console.error('Error in fetchProfile:', error);
@@ -52,6 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check current session
         const initializeAuth = async () => {
             try {
+                // Load cached profile first
+                const cachedProfile = await AsyncStorage.getItem('user_profile');
+                if (cachedProfile) {
+                    setProfile(JSON.parse(cachedProfile));
+                }
+
                 const { data: { session } } = await supabase.auth.getSession();
                 const currentUser = session?.user ?? null;
                 setUser(currentUser);
@@ -120,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             await supabase.auth.signOut();
             await GoogleSignin.signOut();
+            await AsyncStorage.removeItem('user_profile');
             setProfile(null);
             setUser(null);
         } catch (error) {

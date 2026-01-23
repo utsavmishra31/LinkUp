@@ -11,9 +11,18 @@ import {
   ProfileIcon,
 } from '@/components/ui/tab-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthContext } from '@/lib/auth/AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { profile } = useAuthContext();
+  const primaryPhoto = profile?.photos?.find((p: any) => p.position === 0) || profile?.photos?.[0];
+
+  const getImageUrl = (path: string | null | undefined) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${path}`;
+  };
 
   return (
     <Tabs
@@ -65,7 +74,11 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <ProfileIcon color={color} focused={focused} />
+            <ProfileIcon
+              color={color}
+              focused={focused}
+              imageUrl={getImageUrl(primaryPhoto?.imageUrl)}
+            />
           ),
         }}
       />

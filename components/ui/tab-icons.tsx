@@ -1,10 +1,13 @@
+import { Image } from 'expo-image';
 import React from 'react';
+import { View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 interface IconProps {
     color: string;
     size?: number;
     focused?: boolean;
+    imageUrl?: string | null;
 }
 
 export const HomeIcon = ({ color, size = 24, focused }: IconProps) => {
@@ -63,7 +66,29 @@ export const MessagesIcon = ({ color, size = 24, focused }: IconProps) => {
     );
 };
 
-export const ProfileIcon = ({ color, size = 24, focused }: IconProps) => {
+export const ProfileIcon = ({ color, size = 24, focused, imageUrl }: IconProps) => {
+    if (imageUrl) {
+        return (
+            <View style={{
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                borderWidth: focused ? 2 : 1.5,
+                borderColor: color,
+                overflow: 'hidden',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'white'
+            }}>
+                <Image
+                    source={imageUrl}
+                    style={{ width: size, height: size }}
+                    contentFit="cover"
+                    transition={200}
+                />
+            </View>
+        );
+    }
     return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
             <Path
