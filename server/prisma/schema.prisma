@@ -44,6 +44,13 @@ model User {
   lookingFor    LookingFor[]
 
   onboardingCompleted Boolean @default(false)
+  onboardingStep      Int     @default(0)
+
+matchesAsUser1 Match[] @relation("UserMatch1")
+matchesAsUser2 Match[] @relation("UserMatch2")
+
+chatParticipants ChatParticipant[]
+messagesSent Message[] @relation("UserMessages")
 
 
   createdAt     DateTime @default(now())
@@ -79,4 +86,59 @@ model Photo {
 
   @@unique([userId, position])
   @@map("photos")
+}
+
+model Match {
+  id        String   @id @default(uuid())
+  user1Id   String   @db.Uuid
+  user2Id   String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user1 User @relation("UserMatch1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2 User @relation("UserMatch2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  chat Chat?
+
+  @@unique([user1Id, user2Id])
+  @@map("matches")
+}
+
+model Chat {
+  id        String   @id @default(uuid())
+  matchId  String   @unique
+  createdAt DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  participants ChatParticipant[]
+  messages Message[]
+
+  @@map("chats")
+}
+
+model ChatParticipant {
+  id      String @id @default(uuid())
+  chatId String
+  userId String @db.Uuid
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@map("chat_participants")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId   String
+  senderId String   @db.Uuid
+
+  text     String
+  createdAt DateTime @default(now())
+  seenAt   DateTime?
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+sender User @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@map("messages")
 }
