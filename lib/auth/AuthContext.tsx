@@ -6,9 +6,26 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import type { User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+export interface Photo {
+    id: string;
+    imageUrl: string;
+    position: number;
+    isPrimary: boolean;
+}
+
+export interface Profile {
+    id: string;
+    userId: string;
+    displayName: string | null;
+    bio: string | null;
+    gender: string | null;
+    dob: string | null;
+    photos: Photo[];
+}
+
 type AuthContextType = {
     user: User | null;
-    profile: any | null;
+    profile: Profile | null;
     loading: boolean;
     signInWithGoogle: () => Promise<{ user: User | null } | null>;
     signInWithApple: () => Promise<{ user: User | null } | null>;
@@ -29,7 +46,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const [profile, setProfile] = useState<any | null>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
 
     const fetchProfile = async (userId: string) => {
         try {
