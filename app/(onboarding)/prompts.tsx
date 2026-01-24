@@ -294,7 +294,7 @@ export default function PromptsScreen() {
                                     </View>
 
                                     <TextInput
-                                        className="text-xl text-black leading-7 min-h-[120px]"
+                                        className="text-xl text-black leading-7 min-h-[120px] align-top"
                                         placeholder="Type your answer here..."
                                         placeholderTextColor="#9ca3af"
                                         multiline
@@ -302,7 +302,6 @@ export default function PromptsScreen() {
                                         value={tempAnswer}
                                         onChangeText={setTempAnswer}
                                         maxLength={140}
-                                        style={{ textAlignVertical: 'top' }}
                                     />
 
                                     <View className="items-end mt-2">

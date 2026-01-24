@@ -1,4 +1,10 @@
+import { Image } from 'expo-image';
+import { cssInterop } from 'nativewind';
 import '../global.css';
+
+cssInterop(Image, {
+  className: 'style',
+});
 
 import AuthWrapper from '@/components/AuthWrapper';
 import { AuthProvider } from '@/lib/auth/AuthContext';

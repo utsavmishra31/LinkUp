@@ -2,7 +2,7 @@ import { useAuthContext } from '@/lib/auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
@@ -19,76 +19,30 @@ export default function ProfileScreen() {
     const imageUrl = getImageUrl(primaryPhoto?.imageUrl);
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={styles.headerLogo}>LinkUp</Text>
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+            <View className="flex-row justify-between items-center px-5 py-2.5">
+                <Text className="text-2xl font-extrabold text-black" style={{ fontFamily: 'System' }}>LinkUp</Text>
                 <TouchableOpacity onPress={() => { /* TODO: Navigate to settings */ }}>
                     <Ionicons name="settings-outline" size={28} color="black" />
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.content}>
-                <View style={styles.imageContainer}>
+            <View className="items-center mt-10">
+                <View className="shadow-lg bg-white rounded-full">
                     {imageUrl ? (
                         <Image
                             source={imageUrl}
-                            style={styles.profileImage}
+                            className="w-[120px] h-[120px] rounded-full bg-gray-100"
                             contentFit="cover"
                             transition={200}
                             priority="high"
                         />
                     ) : (
-                        <View style={[styles.profileImage, styles.placeholderImage]} />
+                        <View className="w-[120px] h-[120px] rounded-full bg-gray-200" />
                     )}
                 </View>
-                <Text style={styles.name}>{firstName}</Text>
+                <Text className="text-2xl font-bold mt-4 text-black">{firstName}</Text>
             </View>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-    },
-    headerLogo: {
-        fontSize: 24,
-        fontWeight: '800', // Extra bold for logo
-        color: '#000',
-        fontFamily: 'System', // fall back to system font, ideally use app font
-    },
-    content: {
-        alignItems: 'center',
-        marginTop: 40,
-    },
-    imageContainer: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    profileImage: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#f0f0f0',
-    },
-    placeholderImage: {
-        backgroundColor: '#e1e1e1',
-    },
-    name: {
-        fontSize: 24,
-        fontWeight: '700',
-        marginTop: 16,
-        color: '#000',
-    },
-});

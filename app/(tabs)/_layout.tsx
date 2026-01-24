@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import {
@@ -31,7 +30,11 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          height: 88,
+          borderTopWidth: 1,
+          paddingTop: 8,
+        },
       }}>
       <Tabs.Screen
         name="index"
@@ -91,11 +94,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    height: 88,
-    borderTopWidth: 1,
-    paddingTop: 8,
-  },
-});

@@ -165,20 +165,14 @@ export default function LocationPermission() {
                 {/* Location Icon Illustration */}
                 <View className="items-center justify-center flex-1">
                     <View
-                        className="w-40 h-40 rounded-full bg-gray-100 items-center justify-center mb-8"
-                        style={{
-                            shadowColor: '#9333ea',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.2,
-                            shadowRadius: 8,
-                            elevation: 5,
-                        }}
+                        className="w-40 h-40 rounded-full bg-gray-100 items-center justify-center mb-8 shadow-lg shadow-[#9333ea]"
                     >
-                        {hasExistingPermission ? (
-                            <Ionicons name="rocket" size={80} color="#000000" />
-                        ) : (
-                            <Ionicons name="location" size={80} color="#000000" />
-                        )}
+                        {
+                            hasExistingPermission ? (
+                                <Ionicons name="rocket" size={80} color="#000000" />
+                            ) : (
+                                <Ionicons name="location" size={80} color="#000000" />
+                            )}
                     </View>
 
                     {/* Benefits List */}
@@ -236,14 +230,7 @@ export default function LocationPermission() {
                                     onPress={handleStartJourney}
                                     disabled={isLoading}
                                     activeOpacity={0.8}
-                                    className="bg-black rounded-full py-4 items-center justify-center"
-                                    style={{
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: 0.3,
-                                        shadowRadius: 8,
-                                        elevation: 5,
-                                    }}
+                                    className="bg-black rounded-full py-4 items-center justify-center shadow-lg shadow-black"
                                 >
                                     {isLoading ? (
                                         <ActivityIndicator color="white" />
@@ -261,14 +248,7 @@ export default function LocationPermission() {
                                     onPress={requestLocationPermission}
                                     disabled={isLoading}
                                     activeOpacity={0.8}
-                                    className="bg-black rounded-full py-4 items-center justify-center"
-                                    style={{
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: 0.3,
-                                        shadowRadius: 8,
-                                        elevation: 5,
-                                    }}
+                                    className="bg-black rounded-full py-4 items-center justify-center shadow-lg shadow-black"
                                 >
                                     {isLoading ? (
                                         <ActivityIndicator color="white" />

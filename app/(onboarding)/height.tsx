@@ -100,12 +100,8 @@ const AnimatedItem = ({
 
     return (
         <Animated.View
+            className="h-[60px] justify-center items-center"
             style={[
-                {
-                    height: ITEM_HEIGHT,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                },
                 animatedStyle,
             ]}
         >
@@ -185,7 +181,7 @@ export default function HeightSelection() {
                 </Text>
 
                 <View className="items-center justify-center">
-                    <View style={{ height: LIST_HEIGHT, width: width * 0.8, position: 'relative' }}>
+                    <View className="relative w-[80vw] h-[300px]">
                         {/* Center Indicator Line/Zone - Optional, maybe just whitespace or gradient */}
                         {/* 
                          <View
@@ -203,9 +199,7 @@ export default function HeightSelection() {
                             onScroll={onScroll}
                             onMomentumScrollEnd={handleMomentumScrollEnd}
                             scrollEventThrottle={16}
-                            contentContainerStyle={{
-                                paddingVertical: (LIST_HEIGHT - ITEM_HEIGHT) / 2,
-                            }}
+                            contentContainerClassName="py-[120px]"
                             getItemLayout={(data, index) => ({
                                 length: ITEM_HEIGHT,
                                 offset: ITEM_HEIGHT * index,

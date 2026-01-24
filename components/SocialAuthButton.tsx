@@ -37,9 +37,9 @@ export default function SocialAuthButton({ provider, onPress, disabled = false }
             onPress={onPress}
             disabled={disabled}
         >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <View className="flex-row items-center justify-center">
                 {image ? (
-                    <Image source={{ uri: image }} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                    <Image source={{ uri: image }} className="w-5 h-5" resizeMode="contain" />
                 ) : (
                     <Ionicons name={icon} size={20} color={provider === 'google' ? '#000' : '#fff'} />
                 )}

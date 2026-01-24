@@ -69,20 +69,18 @@ export const MessagesIcon = ({ color, size = 24, focused }: IconProps) => {
 export const ProfileIcon = ({ color, size = 24, focused, imageUrl }: IconProps) => {
     if (imageUrl) {
         return (
-            <View style={{
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                borderWidth: focused ? 2 : 1.5,
-                borderColor: color,
-                overflow: 'hidden',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'white'
-            }}>
+            <View
+                className="overflow-hidden justify-center items-center bg-white"
+                style={{
+                    width: size,
+                    height: size,
+                    borderRadius: size / 2,
+                    borderWidth: focused ? 2 : 1.5,
+                    borderColor: color,
+                }}>
                 <Image
                     source={imageUrl}
-                    style={{ width: size, height: size }}
+                    className="w-full h-full"
                     contentFit="cover"
                     transition={200}
                 />

@@ -52,16 +52,9 @@ const DayCard = ({ day, isSelected, onPress }: DayCardProps) => {
             onPress={onPress}
             activeOpacity={0.7}
             className={`items-center justify-center py-3 rounded-2xl border-2 flex-1 h-32 ${isSelected
-                ? 'bg-black border-black'
-                : 'bg-white border-gray-200'
+                ? 'bg-black border-black shadow-md shadow-black/30'
+                : 'bg-white border-gray-200 shadow-sm shadow-black/5'
                 }`}
-            style={{
-                shadowColor: isSelected ? '#000' : '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: isSelected ? 0.3 : 0.05,
-                shadowRadius: 4,
-                elevation: isSelected ? 5 : 2,
-            }}
         >
             <Text
                 className={`text-xs font-semibold mb-1 ${isSelected ? 'text-white' : 'text-gray-500'
