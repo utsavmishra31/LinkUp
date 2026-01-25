@@ -133,7 +133,7 @@ export default function LocationPermission() {
                             }
 
                             await refreshProfile();
-                            router.replace('/components/dashboard');
+                            router.replace('/(tabs)');
                         }
                     },
                 },
