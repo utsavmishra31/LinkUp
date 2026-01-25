@@ -73,7 +73,7 @@ export default function LocationPermission() {
             await refreshProfile();
 
             // Navigate to Dashboard (Tabs)
-            router.replace('/components/dashboard');
+            router.replace('/(tabs)');
 
         } catch (error) {
             console.error('Error finalizing location:', error);
