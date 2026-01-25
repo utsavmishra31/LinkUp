@@ -1,12 +1,14 @@
 import { useAuthContext } from '@/lib/auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const { profile } = useAuthContext();
+    const router = useRouter();
     const primaryPhoto = profile?.photos?.find((p: any) => p.position === 0) || profile?.photos?.[0];
     const firstName = profile?.displayName?.split(' ')[0] || 'User';
 
@@ -42,7 +44,9 @@ export default function ProfileScreen() {
                             <View className="w-[120px] h-[120px] rounded-full bg-gray-200" />
                         )}
                     </View>
-                    <TouchableOpacity className="ml-6 px-10 py-2 bg-black rounded-3xl border border-gray-900" onPress={() => { /* TODO: Navigate to edit profile */ }}>
+                    <TouchableOpacity className="ml-6 px-10 py-2 bg-black rounded-3xl border border-gray-900" onPress={() => router.push('/(modal)/edit-profile')}
+
+                    >
                         <Text className="font-semibold text-white">Edit Profile</Text>
                     </TouchableOpacity>
                 </View>

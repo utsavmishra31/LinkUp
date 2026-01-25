@@ -18,6 +18,8 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         const inAuthGroup = segments[0] === '(auth)';
         const inOnboardingGroup = segments[0] === '(onboarding)';
         const inTabsGroup = segments[0] === '(tabs)';
+        const inModalGroup = segments[0] === '(modal)';
+
 
         if (user) {
             // User is signed in
@@ -57,12 +59,12 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
                         router.replace(targetRoute as any);
                     }
                 }
-            } else if (profile && profile.onboardingCompleted) {
-                // User is fully onboarded
-                if (!inTabsGroup) {
-                    router.replace('/(tabs)');
-                }
-            }
+           } else if (profile && profile.onboardingCompleted) {
+    if (!inTabsGroup && !inModalGroup) {
+        router.replace('/(tabs)');
+    }
+}
+
         } else {
             // User is not signed in
             if (!inAuthGroup) {
@@ -80,6 +82,8 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
     const inTabsGroup = segments[0] === '(tabs)';
+    const inModalGroup = segments[0] === '(modal)';
+
 
     // Prevent rendering protected content if not authenticated
     if (!user && !inAuthGroup) {
@@ -87,13 +91,13 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     }
 
     // Prevent rendering auth content if authenticated but not correctly redirected yet
-    if (user && !inTabsGroup && !inOnboardingGroup) {
-        return (
-            <View className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#000" />
-            </View>
-        );
-    }
+    if (user && !inTabsGroup && !inOnboardingGroup && !inModalGroup) {
+    return (
+        <View className="flex-1 bg-white justify-center items-center">
+            <ActivityIndicator size="large" color="#000" />
+        </View>
+    );
+}
 
     return <>{children}</>;
 }
