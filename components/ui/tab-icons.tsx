@@ -75,7 +75,7 @@ export const ProfileIcon = ({ color, size = 24, focused, imageUrl }: IconProps) 
                     width: size,
                     height: size,
                     borderRadius: size / 2,
-                    borderWidth: focused ? 2 : 1.5,
+                    borderWidth: focused ? 1 : 1.5,
                     borderColor: color,
                 }}>
                 <Image

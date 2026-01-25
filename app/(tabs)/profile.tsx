@@ -23,25 +23,30 @@ export default function ProfileScreen() {
             <View className="flex-row justify-between items-center px-5 py-2.5">
                 <Text className="text-2xl font-extrabold text-black" style={{ fontFamily: 'System' }}>LinkUp</Text>
                 <TouchableOpacity onPress={() => { /* TODO: Navigate to settings */ }}>
-                    <Ionicons name="settings-outline" size={28} color="black" />
+                    <Ionicons name="menu" size={28} color="black" />
                 </TouchableOpacity>
             </View>
 
-            <View className="items-center mt-10">
-                <View className="shadow-lg bg-white rounded-full">
-                    {imageUrl ? (
-                        <Image
-                            source={imageUrl}
-                            className="w-[120px] h-[120px] rounded-full bg-gray-100"
-                            contentFit="cover"
-                            transition={200}
-                            priority="high"
-                        />
-                    ) : (
-                        <View className="w-[120px] h-[120px] rounded-full bg-gray-200" />
-                    )}
+            <View className="px-5 mt-5">
+                <View className="flex-row items-center">
+                    <View className=" bg-white rounded-full">
+                        {imageUrl ? (
+                            <Image
+                                source={imageUrl}
+                                className="w-[90px] h-[90px] rounded-full bg-gray-100"
+                                contentFit="cover"
+                                transition={200}
+                                priority="high"
+                            />
+                        ) : (
+                            <View className="w-[120px] h-[120px] rounded-full bg-gray-200" />
+                        )}
+                    </View>
+                    <TouchableOpacity className="ml-6 px-10 py-2 bg-black rounded-3xl border border-gray-900" onPress={() => { /* TODO: Navigate to edit profile */ }}>
+                        <Text className="font-semibold text-white">Edit Profile</Text>
+                    </TouchableOpacity>
                 </View>
-                <Text className="text-2xl font-bold mt-4 text-black">{firstName}</Text>
+                <Text className="text-xl ml-1 font-bold mt-4 text-black">{firstName}</Text>
             </View>
         </SafeAreaView>
     );
