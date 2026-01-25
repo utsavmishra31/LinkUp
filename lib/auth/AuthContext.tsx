@@ -21,6 +21,8 @@ export interface Profile {
     gender: string | null;
     dob: string | null;
     photos: Photo[];
+    onboardingCompleted: boolean;
+    onboardingStep: number;
 }
 
 type AuthContextType = {
