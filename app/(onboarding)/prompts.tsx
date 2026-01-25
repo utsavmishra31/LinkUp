@@ -50,7 +50,8 @@ export default function PromptsScreen() {
     const { user, refreshProfile } = useAuth();
 
     // --- State ---
-    const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null, null, null]);
+    const [bio, setBio] = useState('');
+    const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
     const [isModalVisible, setModalVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -123,7 +124,12 @@ export default function PromptsScreen() {
         const validPrompts = selectedPrompts.filter((p): p is PromptData => p !== null);
 
         if (validPrompts.length < 1) {
-            Alert.alert('Required', 'Please add at least 1 prompt.');
+            Alert.alert('Required', 'Please add a prompt.');
+            return;
+        }
+
+        if (!bio.trim()) {
+            Alert.alert('Required', 'Please enter your bio.');
             return;
         }
 
@@ -136,6 +142,7 @@ export default function PromptsScreen() {
                 .upsert({
                     userId: user.id,
                     prompts: validPrompts, // Saving as JSONB
+                    bio: bio.trim(),
                 });
 
             if (profileError) throw profileError;
@@ -162,7 +169,7 @@ export default function PromptsScreen() {
 
     // Validation
     const filledCount = selectedPrompts.filter(p => p !== null).length;
-    const canContinue = filledCount >= 1;
+    const canContinue = filledCount >= 1 && bio.trim().length > 0;
 
     // Filter out prompts that are already selected in OTHER slots
     const availablePrompts = PREDEFINED_PROMPTS.filter(p => {
@@ -178,13 +185,33 @@ export default function PromptsScreen() {
             <View className="flex-1 px-6 pt-8">
                 {/* Header */}
                 <View className="mb-8">
-                    <Text className="text-3xl font-bold text-black mb-2">Written Prompts</Text>
-                    <Text className="text-gray-500 text-base">Add 3 prompts to your profile. 1 is required.</Text>
+                    <Text className="text-3xl font-bold text-black mb-2">Bio & Prompt</Text>
+                    <Text className="text-gray-500 text-base">Add a bio and a prompt</Text>
+                </View>
+
+                {/* Bio Input */}
+                <View className="mb-6">
+                    <Text className="text-lg font-bold text-black mb-3">Bio</Text>
+                    <TextInput
+                        className="bg-white border border-gray-200 rounded-xl p-4 text-black text-base leading-6 min-h-[80px] align-top"
+                        placeholder=""
+                        placeholderTextColor="#9ca3af"
+                        multiline
+                        value={bio}
+                        onChangeText={setBio}
+                        maxLength={500}
+                    />
+                    <View className="items-end mt-2">
+                        <Text className="text-xs text-gray-400">
+                            {bio.length}/500
+                        </Text>
+                    </View>
                 </View>
 
                 {/* Slots */}
                 <View className="gap-y-4">
-                    {[0, 1, 2].map((index) => {
+                    <Text className="text-lg font-bold text-black mb-3">Prompt</Text>
+                    {[0].map((index) => {
                         const data = selectedPrompts[index];
                         return (
                             <View key={index} className="relative">
@@ -212,9 +239,9 @@ export default function PromptsScreen() {
                                     // Empty State
                                     <TouchableOpacity
                                         onPress={() => handleSlotPress(index)}
-                                        className="border-2 border-dashed border-gray-200 rounded-xl p-6 items-center justify-center bg-gray-50 active:bg-gray-100"
+                                        className=" border border-gray-200 rounded-xl p-6 items-center justify-center bg-white active:bg-gray-100"
                                     >
-                                        <Text className="text-gray-400 font-medium">+ Select a prompt</Text>
+                                        <Text className="text-gray-700 font-medium">+ Select a prompt</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -301,12 +328,12 @@ export default function PromptsScreen() {
                                         autoFocus
                                         value={tempAnswer}
                                         onChangeText={setTempAnswer}
-                                        maxLength={140}
+                                        maxLength={150}
                                     />
 
                                     <View className="items-end mt-2">
-                                        <Text className={`text-xs ${tempAnswer.length > 120 ? 'text-red-500' : 'text-gray-400'}`}>
-                                            {140 - tempAnswer.length}
+                                        <Text className={`text-xs ${tempAnswer.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
+                                            {150 - tempAnswer.length}
                                         </Text>
                                     </View>
 

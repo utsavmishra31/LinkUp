@@ -36,7 +36,6 @@ model User {
   surname       String?   // private, optional
 
   dob           DateTime? @db.Date
-  age           Int?
   gender        Gender?
   interestedIn  Gender[]
   height        String?
@@ -65,6 +64,7 @@ messagesSent Message[] @relation("UserMessages")
 model Profile {
   userId             String   @id @db.Uuid
   prompts            Json?
+  bio                String?
   availableNext8Days Boolean[]
 
   location Unsupported("geography(Point,4326)")?

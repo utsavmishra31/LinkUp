@@ -20,8 +20,16 @@ router.post('/', authenticateUser, async (req, res) => {
         // 2. Backend decides the userId (NEVER from frontend)
         const userId = req.user.id;
 
-        // 3. Validate prompts data
-        const { prompts } = req.body;
+        // 3. Validate prompts data AND bio
+        const { prompts, bio } = req.body;
+
+        // Validate Bio
+        if (typeof bio !== 'string' || bio.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                error: 'Bio is required'
+            });
+        }
 
         if (!prompts || !Array.isArray(prompts)) {
             return res.status(400).json({
@@ -47,11 +55,11 @@ router.post('/', authenticateUser, async (req, res) => {
             });
         }
 
-        // Limit to 3 prompts max
-        if (validPrompts.length > 3) {
+        // Limit to 1 prompt max (changed from 3)
+        if (validPrompts.length > 1) {
             return res.status(400).json({
                 success: false,
-                error: 'Maximum 3 prompts allowed'
+                error: 'Maximum 1 prompt allowed'
             });
         }
 
@@ -61,15 +69,18 @@ router.post('/', authenticateUser, async (req, res) => {
             create: {
                 userId,
                 prompts: validPrompts,
+                bio: bio.trim(),
             },
             update: {
                 prompts: validPrompts,
+                bio: bio.trim(),
             },
         });
 
         res.json({
             success: true,
             prompts: profile.prompts,
+            bio: profile.bio,
         });
     } catch (error) {
         console.error('Prompts save error:', error);
