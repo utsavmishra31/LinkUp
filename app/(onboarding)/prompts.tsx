@@ -72,11 +72,13 @@ export const BioInput = ({ value, onChangeText, maxLength = 500, placeholder = "
 export const PromptSlot = ({
     data,
     onPress,
-    onClear
+    onClear,
+    showEditIcon
 }: {
     data?: PromptData | null,
     onPress: () => void,
-    onClear?: () => void
+    onClear?: () => void,
+    showEditIcon?: boolean
 }) => {
     if (data) {
         return (
@@ -85,14 +87,26 @@ export const PromptSlot = ({
                     <Text className="text-xs font-bold text-gray-500 uppercase tracking-wide pr-6">
                         {data.question}
                     </Text>
-                    {onClear && (
-                        <TouchableOpacity
-                            onPress={onClear}
-                            className="p-1 -mr-2 -mt-2 bg-gray-50 rounded-full"
-                        >
-                            <Ionicons name="close" size={16} color="#9ca3af" />
-                        </TouchableOpacity>
-                    )}
+
+                    <View className="flex-row gap-1 -mr-2 -mt-2">
+                        {showEditIcon && (
+                            <TouchableOpacity
+                                onPress={onPress}
+                                className="p-1 bg-gray-50 rounded-full"
+                            >
+                                <Ionicons name="pencil" size={14} color="black" />
+                            </TouchableOpacity>
+                        )}
+
+                        {onClear && (
+                            <TouchableOpacity
+                                onPress={onClear}
+                                className="p-1 bg-gray-50 rounded-full"
+                            >
+                                <Ionicons name="close" size={16} color="#9ca3af" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
                 <TouchableOpacity onPress={onPress}>
                     <Text className="text-lg text-black leading-6 font-medium">

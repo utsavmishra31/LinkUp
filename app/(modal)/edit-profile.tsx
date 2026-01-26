@@ -1,11 +1,9 @@
 import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } from '@/app/(onboarding)/prompts';
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
-import { PhotoGrid } from '@/components/PhotoGrid';
-import { API_URL } from '@/lib/api/client';
+import { PhotoGrid, PhotoItem, uploadImage } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -30,14 +28,18 @@ export default function EditProfileScreen() {
     const [isSaving, setIsSaving] = useState(false);
 
     // --- Form State ---
-    const [photos, setPhotos] = useState<{ id: string, imageUrl: string, position: number }[]>([]);
+    const [photos, setPhotos] = useState<PhotoItem[]>([]);
+    const [initialPhotoIds, setInitialPhotoIds] = useState<Set<string>>(new Set());
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [bio, setBio] = useState('');
     const [dobDay, setDobDay] = useState('');
     const [dobMonth, setDobMonth] = useState('');
     const [dobYear, setDobYear] = useState('');
-    const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([]);
+
+    // CHANGED: Initialize with [null] for single slot, matching prompts.tsx
+    const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
+
     const [availableDayIndex, setAvailableDayIndex] = useState<number | null>(null);
 
     // --- Refs for DOB inputs ---
@@ -46,7 +48,9 @@ export default function EditProfileScreen() {
 
     // --- Prompt Modal State ---
     const [isPromptModalVisible, setPromptModalVisible] = useState(false);
-    const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
+
+    // CHANGED: Use activeSlotIndex instead of editingPromptId
+    const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -67,6 +71,7 @@ export default function EditProfileScreen() {
                 if (data.photos) {
                     const sortedPhotos = [...data.photos].sort((a: any, b: any) => a.position - b.position);
                     setPhotos(sortedPhotos);
+                    setInitialPhotoIds(new Set(sortedPhotos.map((p: any) => p.id)));
                 }
 
                 // Name
@@ -89,10 +94,12 @@ export default function EditProfileScreen() {
                     setBio(profileData.bio || '');
 
                     // Prompts
-                    if (profileData.prompts && Array.isArray(profileData.prompts)) {
-                        setSelectedPrompts(profileData.prompts);
+                    // CHANGED: Logic to map DB prompts to our fixed 1-slot array
+                    if (profileData.prompts && Array.isArray(profileData.prompts) && profileData.prompts.length > 0) {
+                        // Take the first prompt, ignore others if any
+                        setSelectedPrompts([profileData.prompts[0]]);
                     } else {
-                        setSelectedPrompts([]);
+                        setSelectedPrompts([null]);
                     }
 
                     // Availability
@@ -115,145 +122,45 @@ export default function EditProfileScreen() {
 
     // --- Handlers: Photos ---
 
-    const pickImage = async () => {
-        const remainingSlots = 6 - photos.length;
-        if (remainingSlots <= 0) {
-            Alert.alert('Limit Reached', 'You can only upload up to 6 photos.');
-            return;
-        }
-
-        try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsMultipleSelection: false,
-                quality: 0.8,
-                allowsEditing: true,
-                aspect: [3, 4],
-            });
-
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-                const uri = result.assets[0].uri;
-                await uploadImage(uri);
-            }
-        } catch (error) {
-            console.error('Error picking images:', error);
-            Alert.alert('Error', 'Failed to pick image');
-        }
-    };
-
-    const uploadImage = async (uri: string) => {
-        try {
-            setIsSaving(true);
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
-            if (!token) throw new Error('No authentication token found');
-
-            const formData = new FormData();
-            const filename = uri.split('/').pop() || `photo_${Date.now()}.jpg`;
-            const match = /\.(\w+)$/.exec(filename);
-            const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-            formData.append('image', {
-                uri,
-                name: filename,
-                type,
-            } as any);
-
-            const response = await fetch(`${API_URL}/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
-                },
-                body: formData,
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Upload failed');
-
-            await refreshProfile();
-            // Also refresh local state efficiently? 
-            // Better to re-fetch the specific data or append locally.
-            // For now, let's just append locally if we can get the ID, or re-fetch.
-            // Re-fetching is safer.
-            const { data: userData } = await supabase.from('users').select('photos(*)').eq('id', user?.id).single();
-            if (userData?.photos) {
-                const sortedPhotos = [...userData.photos].sort((a: any, b: any) => a.position - b.position);
-                setPhotos(sortedPhotos);
-            }
-
-        } catch (error: any) {
-            console.error('Error uploading photo:', error);
-            Alert.alert('Error', error.message || 'Failed to upload photo');
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const removePhoto = async (photoId: string | number) => {
-        const id = typeof photoId === 'number' ? photos[photoId]?.id : photoId;
-        if (!id) return;
-
-        try {
-            setIsSaving(true);
-            const { error } = await supabase
-                .from('photos')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-
-            setPhotos(prev => prev.filter(p => p.id !== id));
-            await refreshProfile();
-        } catch (error: any) {
-            console.error('Error deleting photo:', error);
-            Alert.alert('Error', 'Failed to delete photo');
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    // uploadImage is now imported from components/PhotoGrid
 
     // --- Handlers: DOB ---
     const handleDobDay = (text: string) => { setDobDay(text); if (text.length === 2) dobMonthRef.current?.focus(); };
     const handleDobMonth = (text: string) => { setDobMonth(text); if (text.length === 2) dobYearRef.current?.focus(); };
 
     // --- Handlers: Prompts ---
-    const handlePromptPress = (prompt: PromptData | null) => {
-        setEditingPromptId(prompt ? prompt.id : null);
+    // CHANGED: Use slot index logic
+    const handleSlotPress = (index: number) => {
+        setActiveSlotIndex(index);
         setPromptModalVisible(true);
     };
 
     const handleSavePrompt = (data: { question: string; answer: string }) => {
-        let newPrompts = [...selectedPrompts];
+        if (activeSlotIndex === null) return;
 
-        if (editingPromptId) {
-            newPrompts = newPrompts.map(p =>
-                p?.id === editingPromptId
-                    ? { ...p, question: data.question, answer: data.answer }
-                    : p
-            );
-        } else {
-            // Enforce single prompt: Override index 0
-            newPrompts = [{
-                id: Date.now().toString(),
-                question: data.question,
-                answer: data.answer,
-            }];
-        }
+        const newPrompts = [...selectedPrompts];
+        newPrompts[activeSlotIndex] = {
+            id: Date.now().toString(), // Helper to generate ID
+            question: data.question,
+            answer: data.answer,
+        };
 
         setSelectedPrompts(newPrompts);
         setPromptModalVisible(false);
-        setEditingPromptId(null);
+        setActiveSlotIndex(null);
     };
 
-    const deletePrompt = (id: string) => {
-        setSelectedPrompts(prev => prev.filter(p => p?.id !== id));
+    const handleClearSlot = (index: number) => {
+        const newPrompts = [...selectedPrompts];
+        newPrompts[index] = null;
+        setSelectedPrompts(newPrompts);
     };
 
+    // CHANGED: Filter logic based on prompts.tsx
     const availablePrompts = PREDEFINED_PROMPTS.filter(p => {
         const isUsed = selectedPrompts.some(sp => sp?.question === p);
-        const isCurrentlyEditing = editingPromptId && selectedPrompts.find(sp => sp?.id === editingPromptId)?.question === p;
-        return !isUsed || isCurrentlyEditing;
+        const currentQuestion = activeSlotIndex !== null ? selectedPrompts[activeSlotIndex]?.question : null;
+        return !isUsed || (currentQuestion === p);
     });
 
     // --- Handler: Save All ---
@@ -279,6 +186,22 @@ export default function EditProfileScreen() {
                 if (mDiff < 0 || (mDiff === 0 && today.getDate() < d)) {
                     age--;
                 }
+            }
+
+            // 1.5 Handle Photos (Uploads and Deletes)
+            // Identify deleted photos
+            const currentIds = new Set(photos.filter(p => typeof p !== 'string').map(p => (p as any).id));
+            const idsToDelete = Array.from(initialPhotoIds).filter(id => !currentIds.has(id));
+
+            if (idsToDelete.length > 0) {
+                const { error: deleteError } = await supabase.from('photos').delete().in('id', idsToDelete);
+                if (deleteError) throw deleteError;
+            }
+
+            // Identify new photos to upload
+            const newPhotos = photos.filter(p => typeof p === 'string') as string[];
+            for (const uri of newPhotos) {
+                await uploadImage(uri);
             }
 
             // 2. Update Users Table
@@ -360,8 +283,7 @@ export default function EditProfileScreen() {
                     <View className="mb-8">
                         <PhotoGrid
                             photos={photos}
-                            onAddPhoto={pickImage}
-                            onRemovePhoto={removePhoto}
+                            onChange={setPhotos}
                             maxPhotos={6}
                         />
                     </View>
@@ -378,11 +300,11 @@ export default function EditProfileScreen() {
                         <Text className="text-lg font-bold mb-3">Prompts</Text>
 
                         <View className="gap-y-3">
-                            {/* Single Prompt Slot */}
+                            {/* Single Prompt Slot - Using index 0 */}
                             <PromptSlot
-                                data={selectedPrompts[0] || null}
-                                onPress={() => handlePromptPress(selectedPrompts[0] || null)}
-                                onClear={selectedPrompts[0] ? () => deletePrompt(selectedPrompts[0]!.id) : undefined}
+                                data={selectedPrompts[0]}
+                                onPress={() => handleSlotPress(0)}
+                                showEditIcon={true}
                             />
                         </View>
                     </View>
@@ -479,10 +401,10 @@ export default function EditProfileScreen() {
                 visible={isPromptModalVisible}
                 onClose={() => {
                     setPromptModalVisible(false);
-                    setEditingPromptId(null);
+                    setActiveSlotIndex(null);
                 }}
                 onSave={handleSavePrompt}
-                initialData={editingPromptId ? selectedPrompts.find(p => p?.id === editingPromptId) : null}
+                initialData={activeSlotIndex !== null ? selectedPrompts[activeSlotIndex] : null}
                 availablePrompts={availablePrompts}
             />
 
