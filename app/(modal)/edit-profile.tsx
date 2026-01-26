@@ -33,6 +33,9 @@ export default function EditProfileScreen() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [bio, setBio] = useState('');
+    const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | null>(null);
+    const [interestedIn, setInterestedIn] = useState<string[]>([]);
+    const [height, setHeight] = useState('');
 
 
     // CHANGED: Initialize with [null] for single slot, matching prompts.tsx
@@ -57,7 +60,7 @@ export default function EditProfileScreen() {
                 // Fetch user data WITH profile relation and photos
                 const { data, error } = await supabase
                     .from('users')
-                    .select('displayName, surname, dob, photos(*), profile:profiles(*)')
+                    .select('displayName, surname, dob, gender, interestedIn, height, photos(*), profile:profiles(*)')
                     .eq('id', user.id)
                     .single();
 
@@ -74,6 +77,21 @@ export default function EditProfileScreen() {
                 // Name
                 setFirstName(data.displayName || '');
                 setLastName(data.surname || '');
+
+                // Gender
+                if (data.gender) {
+                    setGender(data.gender);
+                }
+
+                // Interested In
+                if (data.interestedIn && Array.isArray(data.interestedIn)) {
+                    setInterestedIn(data.interestedIn);
+                }
+
+                // Height
+                if (data.height) {
+                    setHeight(data.height);
+                }
 
                 // DOB
 
@@ -160,7 +178,13 @@ export default function EditProfileScreen() {
         if (!user) return;
         setIsSaving(true);
         try {
-            // 1. Validate DOB
+            // 1. Validate Profile
+            if (interestedIn.length === 0) {
+                Alert.alert('Required', 'Please select at least one "Interested In" preference.');
+                setIsSaving(false);
+                return;
+            }
+
             // 1.5 Handle Photos (Uploads and Deletes)
             // Identify deleted photos
             const currentIds = new Set(photos.filter(p => typeof p !== 'string').map(p => (p as any).id));
@@ -183,6 +207,9 @@ export default function EditProfileScreen() {
                 .update({
                     displayName: firstName.trim(),
                     surname: lastName.trim() || null,
+                    gender: gender,
+                    interestedIn: interestedIn,
+                    height: height.trim() || null,
                 })
                 .eq('id', user.id);
 
@@ -260,6 +287,16 @@ export default function EditProfileScreen() {
                         />
                     </View>
 
+                    {/* --- AVAILABILITY --- */}
+                    <View className="mb-8">
+                        <Text className="text-lg font-bold mb-3">Availability</Text>
+                        <Text className="text-gray-500 text-sm mb-4">Select the day you are available.</Text>
+                        <AvailabilityPicker
+                            selectedDayIndex={availableDayIndex}
+                            onSelectDay={handleSelectDay}
+                        />
+                    </View>
+
                     {/* Bio */}
                     <BioInput
                         value={bio}
@@ -295,18 +332,82 @@ export default function EditProfileScreen() {
                         />
                     </View>
 
+                    {/* Gender */}
+                    <View className="mb-4">
+                        <View className="flex-row items-center mb-2">
+                            <Ionicons name="person-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                            <Text className="text-gray-500 text-xs uppercase">Gender</Text>
+                        </View>
+                        <View className="flex-row gap-3">
+                            {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
+                                <TouchableOpacity
+                                    key={option}
+                                    onPress={() => setGender(option)}
+                                    className={`flex-1 py-3 items-center rounded-xl border ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'
+                                        }`}
+                                >
+                                    <Text className={`font-medium ${gender === option ? 'text-white' : 'text-black'}`}>
+                                        {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Interested In */}
+                    <View className="mb-4">
+                        <View className="flex-row items-center mb-2">
+                            <Ionicons name="heart-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                            <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
+                        </View>
+                        <View className="flex-row gap-3">
+                            {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
+                                const isSelected = interestedIn.includes(option);
+                                return (
+                                    <TouchableOpacity
+                                        key={option}
+                                        onPress={() => {
+                                            setInterestedIn(prev => {
+                                                if (prev.includes(option)) {
+                                                    return prev.filter(p => p !== option);
+                                                } else {
+                                                    return [...prev, option];
+                                                }
+                                            });
+                                        }}
+                                        className={`flex-1 py-3 items-center rounded-xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'
+                                            }`}
+                                    >
+                                        <Text className={`font-medium ${isSelected ? 'text-white' : 'text-black'}`}>
+                                            {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    {/* Height */}
+                    <View className="mb-4">
+                        <View className="flex-row items-center mb-2">
+                            <Ionicons name="resize-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                            <Text className="text-gray-500 text-xs uppercase">Height</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => router.push('/(onboarding)/height')}
+                            className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
+                        >
+                            <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
+                                {height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : 'Select height'}
+                            </Text>
+                            <Ionicons name="chevron-forward" size={20} color="gray" />
+                        </TouchableOpacity>
+                    </View>
+
                     {/* DOB */}
 
 
-                    {/* --- AVAILABILITY --- */}
-                    <View className="mb-8">
-                        <Text className="text-lg font-bold mb-3">Availability (Next 8 Days)</Text>
-                        <Text className="text-gray-500 text-sm mb-4">Select the day you are most available.</Text>
-                        <AvailabilityPicker
-                            selectedDayIndex={availableDayIndex}
-                            onSelectDay={handleSelectDay}
-                        />
-                    </View>
+
 
                 </ScrollView>
 
@@ -314,8 +415,8 @@ export default function EditProfileScreen() {
                 <View className="p-5 border-t border-gray-100 bg-white">
                     <TouchableOpacity
                         onPress={handleSaveAll}
-                        disabled={isSaving || firstName.trim().length === 0}
-                        className={`w-full py-4 rounded-full items-center ${isSaving || firstName.trim().length === 0 ? 'bg-gray-200' : 'bg-black'}`}
+                        disabled={isSaving || firstName.trim().length === 0 || interestedIn.length === 0}
+                        className={`w-full py-4 rounded-full items-center ${isSaving || firstName.trim().length === 0 || interestedIn.length === 0 ? 'bg-gray-200' : 'bg-black'}`}
                     >
                         {isSaving ? (
                             <Text className="text-gray-500 font-bold text-lg">Saving...</Text>
@@ -327,7 +428,6 @@ export default function EditProfileScreen() {
                 </View>
             </KeyboardAvoidingView>
 
-            {/* --- PROMPT MODAL --- */}
             {/* --- PROMPT MODAL --- */}
             <PromptModal
                 visible={isPromptModalVisible}
