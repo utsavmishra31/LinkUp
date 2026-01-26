@@ -2,6 +2,7 @@ import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } fro
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem, uploadImage } from '@/components/PhotoGrid';
+import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -232,6 +233,10 @@ export default function EditProfileScreen() {
 
     // --- Handlers: Photos ---
 
+    const handlePhotosChange = (newPhotos: PhotoItem[]) => {
+        setPhotos(newPhotos);
+    };
+
     // uploadImage is now imported from components/PhotoGrid
 
     // --- Handlers: DOB ---
@@ -286,13 +291,35 @@ export default function EditProfileScreen() {
             }
 
             // 1.5 Handle Photos (Uploads and Deletes)
+            // DELETION HANDLED IMMEDIATELY ON INTERACTION NOW.
             // Identify deleted photos
             const currentIds = new Set(photos.filter(p => typeof p !== 'string').map(p => (p as any).id));
             const idsToDelete = Array.from(initialPhotoIds).filter(id => !currentIds.has(id));
 
             if (idsToDelete.length > 0) {
-                const { error: deleteError } = await supabase.from('photos').delete().in('id', idsToDelete);
-                if (deleteError) throw deleteError;
+                const session = await supabase.auth.getSession();
+                const token = session.data.session?.access_token;
+                if (!token) throw new Error('No auth token found');
+
+                // Delete each from backend (R2 + DB)
+                // We do this in parallel or serial. Serial safest for now.
+                for (const id of idsToDelete) {
+                    const response = await fetch(`${API_URL}/upload/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error(`Failed to delete photo ${id}`, errorData);
+                        // Optional: throw error or continue? 
+                        // If we throw, we stop the whole save. 
+                        // Might be better to continue but warn? 
+                        // Let's throw to ensure consistency.
+                        throw new Error(errorData.error || 'Failed to delete photo');
+                    }
+                }
             }
 
             // Identify new photos to upload
@@ -352,10 +379,32 @@ export default function EditProfileScreen() {
         setAvailableDayIndex(availableDayIndex === index ? null : index);
     };
 
+    const handleBack = () => {
+        if (hasChanges) {
+            Alert.alert(
+                'Unsaved Changes',
+                'You have unsaved changes. Are you sure you want to discard them?',
+                [
+                    {
+                        text: 'Continue Editing',
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Discard',
+                        style: 'destructive',
+                        onPress: () => router.back(),
+                    },
+                ]
+            );
+        } else {
+            router.back();
+        }
+    };
+
     if (isLoading) {
         return (
             <SafeAreaView className="flex-1 bg-white justify-center items-center">
-                <Text>Loading...</Text>
+                <ActivityIndicator size="small" color="black" />
             </SafeAreaView>
         );
     }
@@ -363,7 +412,7 @@ export default function EditProfileScreen() {
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
             <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100">
-                <TouchableOpacity onPress={() => router.back()} className="p-2">
+                <TouchableOpacity onPress={handleBack} className="p-2">
                     <Ionicons name="arrow-back" size={24} color="black" />
                 </TouchableOpacity>
                 <Text className="text-lg font-bold">Edit Profile</Text>
@@ -392,7 +441,7 @@ export default function EditProfileScreen() {
                     <View className="mb-8">
                         <PhotoGrid
                             photos={photos}
-                            onChange={setPhotos}
+                            onChange={handlePhotosChange}
                             maxPhotos={6}
                         />
                     </View>

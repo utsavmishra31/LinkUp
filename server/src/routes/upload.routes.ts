@@ -1,4 +1,4 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Router } from 'express';
 import multer from 'multer';
 import { prisma } from '../config/prisma';
@@ -86,6 +86,60 @@ router.post('/', authenticateUser, upload.single('image'), async (req, res) => {
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ success: false, error: 'Upload failed' });
+    }
+});
+
+// Delete photo route
+router.delete('/:id', authenticateUser, async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const userId = req.user.id;
+        const photoId = req.params.id;
+
+        // 1. Find the photo to ensure it belongs to the user
+        const photo = await prisma.photo.findUnique({
+            where: { id: photoId },
+        });
+
+        if (!photo) {
+            return res.status(404).json({ error: 'Photo not found' });
+        }
+
+        if (photo.userId !== userId) {
+            return res.status(403).json({ error: 'Unauthorized to delete this photo' });
+        }
+
+        // 2. Delete from R2
+        if (photo.imageUrl) {
+            try {
+                // The imageUrl in DB is actually the key (based on the POST route logic)
+                // If it's a full URL, we might need to parse it, but looking at POST it saves 'key'
+                await r2.send(
+                    new DeleteObjectCommand({
+                        Bucket: process.env.R2_BUCKET_NAME,
+                        Key: photo.imageUrl,
+                    })
+                );
+            } catch (r2Error) {
+                console.error('Error deleting from R2:', r2Error);
+                // Continue to delete from DB even if R2 fails? 
+                // Usually yes, to keep DB clean. Orphaned files can be cleaned up later.
+            }
+        }
+
+        // 3. Delete from Database
+        await prisma.photo.delete({
+            where: { id: photoId },
+        });
+
+        res.json({ success: true, message: 'Photo deleted successfully' });
+
+    } catch (error) {
+        console.error('Delete error:', error);
+        res.status(500).json({ success: false, error: 'Delete failed' });
     }
 });
 
