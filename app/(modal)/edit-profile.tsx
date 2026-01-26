@@ -1,10 +1,10 @@
 import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } from '@/app/(onboarding)/prompts';
+import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -22,33 +22,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Types & Constants ---
 
-
-// Generate 8 days starting from today (today + next 7 days)
-const getNext8Days = () => {
-    const days = [];
-    const today = new Date();
-
-    for (let i = 0; i < 8; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        days.push({
-            id: i,
-            dayName: dayNames[date.getDay()],
-            dayNumber: date.getDate(),
-            month: monthNames[date.getMonth()],
-            fullDate: date.toISOString().split('T')[0],
-            isToday: i === 0,
-        });
-    }
-
-    return days;
-};
-
-const DAYS = getNext8Days();
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -154,6 +127,8 @@ export default function EditProfileScreen() {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: false,
                 quality: 0.8,
+                allowsEditing: true,
+                aspect: [3, 4],
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -350,6 +325,11 @@ export default function EditProfileScreen() {
         }
     };
 
+    const handleSelectDay = (index: number) => {
+        // Toggle: if already selected, deselect (set to null), else select
+        setAvailableDayIndex(availableDayIndex === index ? null : index);
+    };
+
     if (isLoading) {
         return (
             <SafeAreaView className="flex-1 bg-white justify-center items-center">
@@ -390,7 +370,7 @@ export default function EditProfileScreen() {
                     <BioInput
                         value={bio}
                         onChangeText={setBio}
-                        placeholder="Write something about yourself..."
+                        placeholder=""
                     />
 
                     {/* --- PROMPTS --- */}
@@ -468,43 +448,10 @@ export default function EditProfileScreen() {
                     <View className="mb-8">
                         <Text className="text-lg font-bold mb-3">Availability (Next 8 Days)</Text>
                         <Text className="text-gray-500 text-sm mb-4">Select the day you are most available.</Text>
-                        <View className="gap-3">
-                            {/* Row 1 */}
-                            <View className="flex-row gap-3">
-                                {DAYS.slice(0, 4).map((day, index) => (
-                                    <TouchableOpacity
-                                        key={day.id}
-                                        onPress={() => {
-                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            setAvailableDayIndex(availableDayIndex === index ? null : index);
-                                        }}
-                                        className={`flex-1 items-center justify-center py-3 rounded-xl border ${availableDayIndex === index ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'
-                                            }`}
-                                    >
-                                        <Text className={`text-xs ${availableDayIndex === index ? 'text-white' : 'text-gray-500'}`}>{day.dayName}</Text>
-                                        <Text className={`text-lg font-bold ${availableDayIndex === index ? 'text-white' : 'text-black'}`}>{day.dayNumber}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                            {/* Row 2 */}
-                            <View className="flex-row gap-3">
-                                {DAYS.slice(4, 8).map((day, index) => (
-                                    <TouchableOpacity
-                                        key={day.id}
-                                        onPress={() => {
-                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            const realIndex = index + 4;
-                                            setAvailableDayIndex(availableDayIndex === realIndex ? null : realIndex);
-                                        }}
-                                        className={`flex-1 items-center justify-center py-3 rounded-xl border ${availableDayIndex === index + 4 ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'
-                                            }`}
-                                    >
-                                        <Text className={`text-xs ${availableDayIndex === index + 4 ? 'text-white' : 'text-gray-500'}`}>{day.dayName}</Text>
-                                        <Text className={`text-lg font-bold ${availableDayIndex === index + 4 ? 'text-white' : 'text-black'}`}>{day.dayNumber}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <AvailabilityPicker
+                            selectedDayIndex={availableDayIndex}
+                            onSelectDay={handleSelectDay}
+                        />
                     </View>
 
                 </ScrollView>

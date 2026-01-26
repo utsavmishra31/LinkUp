@@ -1,91 +1,15 @@
+import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
-// Generate 8 days starting from today (today + next 7 days)
-const getNext8Days = () => {
-    const days = [];
-    const today = new Date();
-
-    for (let i = 0; i < 8; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        days.push({
-            id: i,
-            dayName: dayNames[date.getDay()],
-            dayNumber: date.getDate(),
-            month: monthNames[date.getMonth()],
-            fullDate: date.toISOString().split('T')[0],
-            isToday: i === 0,
-        });
-    }
-
-    return days;
-};
-
-const DAYS = getNext8Days();
-
-interface DayCardProps {
-    day: typeof DAYS[0];
-    isSelected: boolean;
-    onPress: () => void;
-}
-
-const DayCard = ({ day, isSelected, onPress }: DayCardProps) => {
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.7}
-            className={`items-center justify-center py-3 rounded-2xl border-2 flex-1 h-32 ${isSelected
-                ? 'bg-black border-black shadow-md shadow-black/30'
-                : 'bg-white border-gray-200 shadow-sm shadow-black/5'
-                }`}
-        >
-            <Text
-                className={`text-xs font-semibold mb-1 ${isSelected ? 'text-white' : 'text-gray-500'
-                    }`}
-            >
-                {day.dayName}
-            </Text>
-            <Text
-                className={`text-2xl font-bold ${isSelected ? 'text-white' : 'text-black'
-                    }`}
-            >
-                {day.dayNumber}
-            </Text>
-            <Text
-                className={`text-xs font-medium mt-1 ${isSelected ? 'text-gray-400' : 'text-gray-400'
-                    }`}
-            >
-                {day.month}
-            </Text>
-            {day.isToday && (
-                <View className={`mt-1 px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20' : 'bg-gray-100'
-                    }`}>
-                    <Text className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-black'
-                        }`}>
-                        Today
-                    </Text>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
-};
 
 export default function AvailabilitySelection() {
     // Initialize with no day selected (null means no selection)
@@ -94,8 +18,7 @@ export default function AvailabilitySelection() {
     const { user, refreshProfile } = useAuth();
     const router = useRouter();
 
-    const selectDay = (index: number) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const handleSelectDay = (index: number) => {
         // If clicking the same day, deselect it; otherwise select the new day
         setSelectedDayIndex(selectedDayIndex === index ? null : index);
     };
@@ -177,32 +100,11 @@ export default function AvailabilitySelection() {
                     Select one day when you're available to meet in next 7 days
                 </Text>
 
-                {/* Grid layout - 4 columns, 2 rows */}
-                <View className="gap-3">
-                    {/* First row - 4 days */}
-                    <View className="flex-row gap-3">
-                        {DAYS.slice(0, 4).map((day, index) => (
-                            <DayCard
-                                key={day.id}
-                                day={day}
-                                isSelected={selectedDayIndex === index}
-                                onPress={() => selectDay(index)}
-                            />
-                        ))}
-                    </View>
-
-                    {/* Second row - 4 days */}
-                    <View className="flex-row gap-3">
-                        {DAYS.slice(4, 8).map((day, index) => (
-                            <DayCard
-                                key={day.id}
-                                day={day}
-                                isSelected={selectedDayIndex === index + 4}
-                                onPress={() => selectDay(index + 4)}
-                            />
-                        ))}
-                    </View>
-                </View>
+                {/* Shared Picker Component */}
+                <AvailabilityPicker
+                    selectedDayIndex={selectedDayIndex}
+                    onSelectDay={handleSelectDay}
+                />
 
                 <View className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <Text className="text-sm text-gray-700">
