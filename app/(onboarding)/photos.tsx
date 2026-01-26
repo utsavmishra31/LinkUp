@@ -32,8 +32,8 @@ export default function PhotosUpload() {
 
     const handleContinue = async () => {
         if (!user) return;
-        if (photos.length < 2) {
-            Alert.alert('Minimum Photos', 'Please add at least 2 photos to continue.');
+        if (photos.length < 1) {
+            Alert.alert('Minimum Photos', 'Please add at least 1 photo to continue.');
             return;
         }
 
@@ -69,7 +69,7 @@ export default function PhotosUpload() {
         }
     };
 
-    const canContinue = photos.length >= 2;
+    const canContinue = photos.length >= 1;
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -77,7 +77,7 @@ export default function PhotosUpload() {
                 {/* Header */}
                 <View className="mb-8">
                     <Text className="text-3xl font-bold text-black mb-2">Add your photos</Text>
-                    <Text className="text-gray-500 text-base">Add at least 2 photos to continue</Text>
+                    <Text className="text-gray-500 text-base">Add at least 1 photo to continue</Text>
                 </View>
 
                 {/* Photo Grid */}

@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { API_URL } from '@/lib/api/client';
 import { supabase } from '@/lib/supabase';
+import ImageCropper from './ImageCropper';
 
 export type PhotoItem = string | { id: string; imageUrl: string; position?: number };
 
@@ -45,6 +47,22 @@ interface PhotoGridProps {
 }
 
 export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
+    const [cropQueue, setCropQueue] = useState<string[]>([]);
+
+    const activeCropImage = cropQueue.length > 0 ? cropQueue[0] : null;
+
+    const onCropComplete = (croppedUri: string) => {
+        // Add the cropped image to the list
+        onChange([...photos, croppedUri]);
+        // Remove from queue
+        setCropQueue((prev) => prev.slice(1));
+    };
+
+    const onCropCancel = () => {
+        // Skip current image
+        setCropQueue((prev) => prev.slice(1));
+    };
+
     const getPhotoUri = (photo: PhotoItem): string => {
         if (typeof photo === 'string') {
             return photo;
@@ -72,8 +90,8 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
 
             if (!result.canceled) {
                 const newPhotos = result.assets.map(asset => asset.uri);
-                // Append new URIs to existing photos
-                onChange([...photos, ...newPhotos]);
+                // Start the cropping flow
+                setCropQueue(newPhotos);
             }
         } catch (error) {
             console.error('Error picking images:', error);
@@ -110,57 +128,66 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
     };
 
     return (
-        <View className="flex-row flex-wrap justify-between gap-y-4">
-            {[...Array(maxPhotos)].map((_, index) => {
-                const photo = photos[index];
-                return (
-                    <Pressable
-                        key={index}
-                        onPress={() => !photo && pickImage()}
-                        className={`w-[31%] aspect-[3/4] rounded-xl overflow-hidden relative ${photo ? 'bg-gray-100' : 'bg-gray-50 border-2 border-dashed border-gray-300'
-                            }`}
-                    >
-                        {photo ? (
-                            <>
-                                <Image
-                                    source={{ uri: getPhotoUri(photo) }}
-                                    className="w-full h-full"
-                                    contentFit="cover"
-                                    transition={200}
-                                />
-                                {/* Edit Button or Remove Button */}
-                                {photos.length <= 2 ? (
-                                    <Pressable
-                                        onPress={() => editPhoto(index)}
-                                        className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
-                                        hitSlop={10}
-                                    >
-                                        <Ionicons name="pencil" size={14} color="black" />
-                                    </Pressable>
-                                ) : (
-                                    <Pressable
-                                        onPress={() => removePhoto(index)}
-                                        className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
-                                        hitSlop={10}
-                                    >
-                                        <Ionicons name="close" size={14} color="black" />
-                                    </Pressable>
-                                )}
+        <>
+            <View className="flex-row flex-wrap justify-between gap-y-4">
+                {[...Array(maxPhotos)].map((_, index) => {
+                    const photo = photos[index];
+                    return (
+                        <Pressable
+                            key={index}
+                            onPress={() => !photo && pickImage()}
+                            className={`w-[31%] aspect-[3/4] rounded-xl overflow-hidden relative ${photo ? 'bg-gray-100' : 'bg-gray-50 border-2 border-dashed border-gray-300'
+                                }`}
+                        >
+                            {photo ? (
+                                <>
+                                    <Image
+                                        source={{ uri: getPhotoUri(photo) }}
+                                        className="w-full h-full"
+                                        contentFit="cover"
+                                        transition={200}
+                                    />
+                                    {/* Edit Button or Remove Button */}
+                                    {photos.length <= 1 ? (
+                                        <Pressable
+                                            onPress={() => editPhoto(index)}
+                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
+                                            hitSlop={10}
+                                        >
+                                            <Ionicons name="pencil" size={14} color="black" />
+                                        </Pressable>
+                                    ) : (
+                                        <Pressable
+                                            onPress={() => removePhoto(index)}
+                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
+                                            hitSlop={10}
+                                        >
+                                            <Ionicons name="close" size={14} color="black" />
+                                        </Pressable>
+                                    )}
 
-                                {index === 0 && (
-                                    <View className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md">
-                                        <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
-                                    </View>
-                                )}
-                            </>
-                        ) : (
-                            <View className="flex-1 items-center justify-center">
-                                <Ionicons name="add" size={24} color="#9ca3af" />
-                            </View>
-                        )}
-                    </Pressable>
-                );
-            })}
-        </View>
+                                    {index === 0 && (
+                                        <View className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md">
+                                            <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
+                                        </View>
+                                    )}
+                                </>
+                            ) : (
+                                <View className="flex-1 items-center justify-center">
+                                    <Ionicons name="add" size={24} color="#9ca3af" />
+                                </View>
+                            )}
+                        </Pressable>
+                    );
+                })}
+            </View>
+
+            <ImageCropper
+                visible={!!activeCropImage}
+                imageUri={activeCropImage}
+                onCrop={onCropComplete}
+                onCancel={onCropCancel}
+            />
+        </>
     );
 }
