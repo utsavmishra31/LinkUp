@@ -8,43 +8,80 @@ import { API_URL } from '@/lib/api/client';
 import { supabase } from '@/lib/supabase';
 import ImageCropper from './ImageCropper';
 
+
 export type PhotoItem = {
     id?: string;              // DB id (existing photos)
     localUri?: string;        // temp while uploading
     imageUrl?: string;        // R2 public URL or key
     position?: number;
     status: 'uploading' | 'uploaded' | 'error';
+    uploadProgress?: number;
+    replaceOfId?: string; // ✅ ADD THIS
+
 };
 
-export const uploadImage = async (uri: string) => {
+const generateFileName = (uri: string) => {
+    const ext = uri.split('.').pop() || 'jpg';
+    return `photo_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
+};
+
+
+export const uploadImage = async (
+    uri: string,
+    onProgress?: (progress: number) => void,
+    replaceId?: string // ✅ Accept replaceId
+) => {
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) throw new Error('No authentication token found');
 
+    const filename = generateFileName(uri);
+    const ext = filename.split('.').pop() || 'jpg';
+
     const formData = new FormData();
-    const filename = uri.split('/').pop() || `photo_${Date.now()}.jpg`;
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    // Append replaceId if it exists
+    if (replaceId) {
+        formData.append('replaceId', replaceId);
+    }
 
     formData.append('image', {
         uri,
         name: filename,
-        type,
+        type: `image/${ext}`,
     } as any);
 
-    const response = await fetch(`${API_URL}/upload`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-    });
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Upload failed');
-    return data;
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && onProgress) {
+                const progress = Math.round((event.loaded / event.total) * 100);
+                onProgress(progress);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch {
+                    reject(new Error('Invalid server response'));
+                }
+            } else {
+                reject(new Error(xhr.responseText || 'Upload failed'));
+            }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out'));
+
+        xhr.timeout = 30000;
+        xhr.open('POST', `${API_URL}/upload`);
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.send(formData);
+    });
 };
+
 
 export const deleteImage = async (photoId: string) => {
     const session = await supabase.auth.getSession();
@@ -73,6 +110,8 @@ interface PhotoGridProps {
 
 export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
     const [cropQueue, setCropQueue] = useState<string[]>([]);
+    // Track if we're in edit mode: { index: photo position, photoId: old photo ID to delete }
+    const [editMode, setEditMode] = useState<{ index: number; photoId?: string } | null>(null);
 
     // We'll use a local helper to handle the actual upload process
     // so it can be reused by both "add new" (crop) and "edit existing" (picker)
@@ -81,29 +120,60 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
         const tempPhoto: PhotoItem = {
             localUri: uri,
             status: 'uploading',
+            uploadProgress: 0,
+            replaceOfId: editMode?.photoId,
         };
 
         if (isEdit) {
             // Replace existing at index with temp item
-            const updated = [...photos];
-            updated[editIndex] = tempPhoto;
-            onChange(updated);
+            onChange(prev => {
+                const updated = [...prev];
+                // Ensure we replace at the correct index even if photos changed slightly
+                // But for index stability, using index is mostly fine in this context
+                if (editIndex >= 0 && editIndex < updated.length) {
+                    updated[editIndex] = tempPhoto;
+                }
+                return updated;
+            });
         } else {
             // Add new
-            onChange([...photos, tempPhoto]);
+            onChange(prev => [...prev, tempPhoto]);
         }
 
         try {
-            const uploaded = await uploadImage(uri);
+            // Pass replaceOfId if in edit mode
+            const replaceId = isEdit ? editMode?.photoId : undefined;
+
+            const uploaded = await uploadImage(uri, (progress) => {
+                // Update progress in real-time
+                onChange(prev => {
+                    const newPhotos = [...prev];
+                    if (isEdit) {
+                        // Find by matching localUri at that index or nearby to be safe, 
+                        // but trusting index for now since we locked UI
+                        if (newPhotos[editIndex]?.localUri === uri) {
+                            newPhotos[editIndex] = {
+                                ...newPhotos[editIndex],
+                                uploadProgress: progress,
+                            };
+                        }
+                    } else {
+                        // For new photos, find by localUri
+                        const idx = newPhotos.findIndex(p => p.localUri === uri && p.status === 'uploading');
+                        if (idx !== -1) {
+                            newPhotos[idx] = {
+                                ...newPhotos[idx],
+                                uploadProgress: progress,
+                            };
+                        }
+                    }
+                    return newPhotos;
+                });
+            }, replaceId) as { imageUrl: string; id: string };
             // backend returns { imageUrl, id? }
 
             onChange(prev => {
                 const newPhotos = [...prev];
-                // needed to find the item we just added/updated. 
-                // Since `prev` might have changed (race condition?), reliable way is by reference if we hadn't closed over `tempPhoto`.
-                // Actually, just find by localUri or index.
-                // For edit: index is stable usually.
-                // For add: it's the last one OR we match object reference (if simplistic).
 
                 if (isEdit) {
                     // Update at specific index
@@ -113,6 +183,7 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                             imageUrl: uploaded.imageUrl,
                             id: uploaded.id,
                             status: 'uploaded',
+                            uploadProgress: 100,
                         };
                     }
                 } else {
@@ -124,6 +195,7 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                             imageUrl: uploaded.imageUrl,
                             id: uploaded.id,
                             status: 'uploaded',
+                            uploadProgress: 100,
                         };
                     }
                 }
@@ -150,14 +222,30 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
 
     const activeCropImage = cropQueue.length > 0 ? cropQueue[0] : null;
 
-    const onCropComplete = async (croppedUri: string) => {
-        // This is always "Add New" flow in current usage
-        await handleUploadProcess(croppedUri, false, -1);
+    const onCropComplete = (croppedUri: string) => {
+        // 1️⃣ Close cropper immediately (UI first)
         setCropQueue(prev => prev.slice(1));
+
+        // 2️⃣ Handle replace vs add
+        if (editMode) {
+            const { index, photoId } = editMode;
+            setEditMode(null);
+
+            // Upload new photo first (REPLACE logic handled by upload API now)
+            handleUploadProcess(croppedUri, true, index);
+
+            // NO manual delete here. Backend handles validation and replacement.
+
+        } else {
+            // Add new photo in background
+            handleUploadProcess(croppedUri, false, -1);
+        }
     };
+
 
     const onCropCancel = () => {
         setCropQueue(prev => prev.slice(1));
+        setEditMode(null);
     };
 
 
@@ -197,15 +285,21 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: false,
-                allowsEditing: true, // Native cropper for edit
                 quality: 0.8,
-                aspect: [3, 4],
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const newUri = result.assets[0].uri;
-                // Trigger upload for this index
-                handleUploadProcess(newUri, true, index);
+                const photo = photos[index];
+
+                // Set edit mode with index and photo ID (for deletion)
+                setEditMode({
+                    index,
+                    photoId: photo?.id
+                });
+
+                // Add to crop queue to trigger custom cropper
+                setCropQueue([newUri]);
             }
         } catch (error) {
             console.error('Error editing image:', error);
@@ -213,25 +307,25 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
         }
     };
 
-const removePhoto = async (index: number) => {
-    const photo = photos[index];
+    const removePhoto = async (index: number) => {
+        const photo = photos[index];
 
-    // 1️⃣ Remove instantly from UI
-    onChange(prev => prev.filter((_, i) => i !== index));
+        // 1️⃣ Remove instantly from UI
+        onChange(prev => prev.filter((_, i) => i !== index));
 
-    // 2️⃣ Delete instantly from backend
-    if (photo?.id) {
-        try {
-            await deleteImage(photo.id);
-        } catch (err) {
-            console.error(err);
-            Alert.alert(
-                'Delete failed',
-                'Could not delete photo from server'
-            );
+        // 2️⃣ Delete instantly from backend
+        if (photo?.id) {
+            try {
+                await deleteImage(photo.id);
+            } catch (err) {
+                console.error(err);
+                Alert.alert(
+                    'Delete failed',
+                    'Could not delete photo from server'
+                );
+            }
         }
-    }
-};
+    };
 
 
     return (
@@ -265,32 +359,32 @@ const removePhoto = async (index: number) => {
                                         </Pressable>
                                     ) : (
                                         <Pressable
-    onPress={() => {
-        Alert.alert(
-            'Manage Photo',
-            'Choose an option',
-            [
-                {
-                    text: 'Replace',
-                    onPress: () => editPhoto(index),
-                },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => removePhoto(index),
-                },
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-            ]
-        );
-    }}
-    className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
-    hitSlop={10}
->
-    <Ionicons name="close" size={14} color="black" />
-</Pressable>
+                                            onPress={() => {
+                                                Alert.alert(
+                                                    'Manage Photo',
+                                                    'Choose an option',
+                                                    [
+                                                        {
+                                                            text: 'Replace',
+                                                            onPress: () => editPhoto(index),
+                                                        },
+                                                        {
+                                                            text: 'Delete',
+                                                            style: 'destructive',
+                                                            onPress: () => removePhoto(index),
+                                                        },
+                                                        {
+                                                            text: 'Cancel',
+                                                            style: 'cancel',
+                                                        },
+                                                    ]
+                                                );
+                                            }}
+                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
+                                            hitSlop={10}
+                                        >
+                                            <Ionicons name="close" size={14} color="black" />
+                                        </Pressable>
 
                                     )}
 
@@ -299,6 +393,8 @@ const removePhoto = async (index: number) => {
                                             <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
                                         </View>
                                     )}
+
+
                                 </>
                             ) : (
                                 <View className="flex-1 items-center justify-center">

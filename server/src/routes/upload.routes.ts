@@ -51,41 +51,108 @@ router.post('/', authenticateUser, upload.single('image'), async (req, res) => {
             })
         );
 
-        // 6. Store image key in database
-        const imageUrl = `https://${process.env.R2_PUBLIC_URL || process.env.CLOUDFLARE_ACCOUNT_ID + '.r2.cloudflarestorage.com'}/${process.env.R2_BUCKET_NAME}/${key}`;
+        // 6. Handle Replacement vs New Creation
+        const replaceId = req.body.replaceId; // Check if we are replacing an existing photo
+        let photo;
 
-        // Get the next position for this user's photos
-        const existingPhotos = await prisma.photo.findMany({
-            where: { userId },
-            orderBy: { position: 'desc' },
-            take: 1,
-        });
+        if (replaceId) {
+            // --- REPLACEMENT LOGIC ---
+            // 1. Verify ownership
+            const existingPhoto = await prisma.photo.findUnique({
+                where: { id: replaceId },
+            });
 
-        const nextPosition = existingPhotos.length > 0 ? existingPhotos[0].position + 1 : 0;
+            if (!existingPhoto) {
+                return res.status(404).json({ error: 'Photo to replace not found' });
+            }
 
-        // Create photo record
-        const photo = await prisma.photo.create({
-            data: {
-                userId,
-                imageUrl: key, // Store the R2 key, not the full URL
-                position: nextPosition,
-                isPrimary: nextPosition === 0, // First photo is primary
-            },
-        });
+            if (existingPhoto.userId !== userId) {
+                return res.status(403).json({ error: 'Unauthorized to replace this photo' });
+            }
+
+            // 2. Delete old image from R2 (optional but good for cleanup)
+            if (existingPhoto.imageUrl) {
+                try {
+                    await r2.send(
+                        new DeleteObjectCommand({
+                            Bucket: process.env.R2_BUCKET_NAME,
+                            Key: existingPhoto.imageUrl,
+                        })
+                    );
+                } catch (r2Error) {
+                    console.error('Error deleting old image from R2 during replacement:', r2Error);
+                    // Non-critical, continue
+                }
+            }
+
+            // 3. Update DB record (keep position and ID same)
+            photo = await prisma.photo.update({
+                where: { id: replaceId },
+                data: {
+                    imageUrl: key,
+                    // Position and isPrimary remain unchanged
+                },
+            });
+
+        } else {
+            // --- CREATE NEW LOGIC ---
+            // Create photo record with retry logic for position conflicts
+            let retries = 3;
+            while (retries > 0) {
+                try {
+                    // Get the next position for this user's photos
+                    const existingPhotos = await prisma.photo.findMany({
+                        where: { userId },
+                        orderBy: { position: 'desc' },
+                        take: 1,
+                    });
+
+                    const nextPosition = existingPhotos.length > 0 ? existingPhotos[0].position + 1 : 0;
+
+                    photo = await prisma.photo.create({
+                        data: {
+                            userId,
+                            imageUrl: key,
+                            position: nextPosition,
+                            isPrimary: nextPosition === 0,
+                        },
+                    });
+                    break; // Success, exit loop
+                } catch (error: any) {
+                    // Check for P2002 (Unique constraint failed) on position
+                    if (error.code === 'P2002' &&
+                        (error.meta?.target?.includes('position') ||
+                            JSON.stringify(error.meta).includes('position'))) {
+                        retries--;
+                        if (retries === 0) throw error;
+                        // Wait a bit before retrying to let other transaction finish
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        continue;
+                    }
+                    throw error; // Other error, rethrow
+                }
+            }
+        }
+
+        if (!photo) {
+            throw new Error('Failed to create or update photo record');
+        }
 
         res.json({
             success: true,
-            key,
-            imageUrl,
-            photo: {
-                id: photo.id,
-                position: photo.position,
-                isPrimary: photo.isPrimary,
-            }
+            id: photo.id,          // ✅ frontend expects this
+            imageUrl: key,         // ✅ store R2 key only
+            position: photo.position,
+            isPrimary: photo.isPrimary,
         });
-    } catch (error) {
+
+    } catch (error: any) {
         console.error('Upload error:', error);
-        res.status(500).json({ success: false, error: 'Upload failed' });
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Upload failed',
+            details: JSON.stringify(error)
+        });
     }
 });
 
@@ -98,6 +165,12 @@ router.delete('/:id', authenticateUser, async (req, res) => {
 
         const userId = req.user.id;
         const photoId = req.params.id;
+
+        if (!photoId) {
+            return res.status(400).json({ error: 'Photo ID is required' });
+        }
+
+        console.log(`[DELETE] Attempting to delete photoId: ${photoId} for user: ${userId}`);
 
         // 1. Find the photo to ensure it belongs to the user
         const photo = await prisma.photo.findUnique({
@@ -130,50 +203,56 @@ router.delete('/:id', authenticateUser, async (req, res) => {
             }
         }
 
-       // 3. Delete from Database
-await prisma.photo.delete({
-    where: { id: photoId },
-});
-
-// 4. Reorder remaining photos
-const remainingPhotos = await prisma.photo.findMany({
-    where: { userId },
-    orderBy: { position: 'asc' },
-});
-
-await Promise.all(
-    remainingPhotos.map((p, index) =>
-        prisma.photo.update({
-            where: { id: p.id },
-            data: { position: index },
-        })
-    )
-);
-
-// 5. Ensure one primary photo exists
-const primaryExists = await prisma.photo.findFirst({
-    where: { userId, isPrimary: true },
-});
-
-if (!primaryExists) {
-    const firstPhoto = await prisma.photo.findFirst({
-        where: { userId },
-        orderBy: { position: 'asc' },
-    });
-
-    if (firstPhoto) {
-        await prisma.photo.update({
-            where: { id: firstPhoto.id },
-            data: { isPrimary: true },
+        // 3. Delete from Database
+        await prisma.photo.delete({
+            where: { id: photoId },
         });
-    }
-}
+
+        // 4. Reorder remaining photos
+        const remainingPhotos = await prisma.photo.findMany({
+            where: { userId },
+            orderBy: { position: 'asc' },
+        });
+
+        // Update sequentially to avoid unique constraint violations (e.g. updating 2->1 while 1 is still at 1)
+        for (let i = 0; i < remainingPhotos.length; i++) {
+            const p = remainingPhotos[i];
+            if (p.position !== i) {
+                await prisma.photo.update({
+                    where: { id: p.id },
+                    data: { position: i },
+                });
+            }
+        }
+
+        // 5. Ensure one primary photo exists
+        const primaryExists = await prisma.photo.findFirst({
+            where: { userId, isPrimary: true },
+        });
+
+        if (!primaryExists) {
+            const firstPhoto = await prisma.photo.findFirst({
+                where: { userId },
+                orderBy: { position: 'asc' },
+            });
+
+            if (firstPhoto) {
+                await prisma.photo.update({
+                    where: { id: firstPhoto.id },
+                    data: { isPrimary: true },
+                });
+            }
+        }
 
         res.json({ success: true, message: 'Photo deleted successfully' });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Delete error:', error);
-        res.status(500).json({ success: false, error: 'Delete failed' });
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Delete failed',
+            details: JSON.stringify(error)
+        });
     }
 });
 

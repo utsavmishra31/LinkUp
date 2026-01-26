@@ -21,9 +21,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// --- Types & Constants ---
-
-
 export default function EditProfileScreen() {
     const router = useRouter();
     const { user, refreshProfile } = useAuth();
@@ -32,6 +29,7 @@ export default function EditProfileScreen() {
 
     // --- Form State ---
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
+    const isUploading = photos.some(p => p.status === 'uploading');
     const [initialPhotoIds, setInitialPhotoIds] = useState<Set<string>>(new Set());
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -40,28 +38,17 @@ export default function EditProfileScreen() {
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const [height, setHeight] = useState('');
 
-
-    // CHANGED: Initialize with [null] for single slot, matching prompts.tsx
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
-
     const [availableDayIndex, setAvailableDayIndex] = useState<number | null>(null);
 
-    // --- Refs for DOB inputs ---
-
-
-    // --- Prompt Modal State ---
     const [isPromptModalVisible, setPromptModalVisible] = useState(false);
-
-    // CHANGED: Use activeSlotIndex instead of editingPromptId
     const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
 
-    // --- Height Modal State ---
     const [isHeightModalVisible, setHeightModalVisible] = useState(false);
     const [tempHeight, setTempHeight] = useState<typeof HEIGHT_OPTIONS[0] | null>(null);
 
-    // --- Initial State for Change Detection ---
     const [initialState, setInitialState] = useState<{
-        photos: string[]; // IDs for existing
+        photos: string[];
         firstName: string;
         lastName: string;
         bio: string;
@@ -74,63 +61,33 @@ export default function EditProfileScreen() {
 
     const hasChanges = React.useMemo(() => {
         if (!initialState) return false;
-
-        // 1. Photos
-        const currentPhotoIds = photos.map(p => (typeof p === 'string' ? 'new' : p.id)).join(',');
-        const initialPhotoIdsStr = initialState.photos.join(',');
-
-
-        const currentIds = photos.map(p => {
-            if (typeof p === 'string') return `new-${p}`; // Treat new photos as unique strings
-            return p.id;
-        });
-
-        const currentPhotosRep = photos
-  .map(p => p.id ?? `new-${p.localUri}`)
-  .join('|');
-
-const initialPhotosRep = initialState.photos.join('|');
-
-if (currentPhotosRep !== initialPhotosRep) return true;
-
-
-        // 2. Simple fields
         if (firstName !== initialState.firstName) return true;
-        if (lastName !== initialState.lastName) return true; // lastName is not really used in UI but kept in state
+        if (lastName !== initialState.lastName) return true;
         if (bio !== initialState.bio) return true;
         if (gender !== initialState.gender) return true;
         if (height !== initialState.height) return true;
         if (availableDayIndex !== initialState.availableDayIndex) return true;
 
-        // 3. Arrays (InterestedIn) - Sort to ignore order if that doesn't matter, 
-        // but usually UI renders in specific order. Let's assume order doesn't matter for "set" equality.
         const sortedInterestedIn = [...interestedIn].sort().join(',');
         const sortedInitialInterestedIn = [...initialState.interestedIn].sort().join(',');
         if (sortedInterestedIn !== sortedInitialInterestedIn) return true;
 
-        // 4. Prompts
-        // Compare content of prompt in slot 0
         const currentPrompt = selectedPrompts[0];
         const initialPrompt = initialState.prompts[0];
 
         if (!currentPrompt && !initialPrompt) {
-            // both null, no change
         } else if ((!currentPrompt && initialPrompt) || (currentPrompt && !initialPrompt)) {
             return true;
         } else if (currentPrompt && initialPrompt) {
             if (currentPrompt.question !== initialPrompt.question || currentPrompt.answer !== initialPrompt.answer) return true;
         }
-
         return false;
-    }, [initialState, photos, firstName, lastName, bio, gender, interestedIn, height, availableDayIndex, selectedPrompts]);
+    }, [initialState, firstName, lastName, bio, gender, interestedIn, height, availableDayIndex, selectedPrompts]);
 
-
-    // --- Data Fetching ---
     useEffect(() => {
         const loadProfileData = async () => {
             if (!user) return;
             try {
-                // Fetch user data WITH profile relation and photos
                 const { data, error } = await supabase
                     .from('users')
                     .select('displayName, surname, dob, gender, interestedIn, height, photos(*), profile:profiles(*)')
@@ -140,62 +97,34 @@ if (currentPhotosRep !== initialPhotosRep) return true;
                 if (error) throw error;
                 if (!data) return;
 
-                // Photos
                 if (data.photos) {
                     const sortedPhotos = [...data.photos].sort((a: any, b: any) => a.position - b.position);
                     setPhotos(sortedPhotos);
                     setInitialPhotoIds(new Set(sortedPhotos.map((p: any) => p.id)));
                 }
 
-                // Name
                 setFirstName(data.displayName || '');
                 setLastName(data.surname || '');
+                if (data.gender) setGender(data.gender);
+                if (data.interestedIn && Array.isArray(data.interestedIn)) setInterestedIn(data.interestedIn);
+                if (data.height) setHeight(data.height);
 
-                // Gender
-                if (data.gender) {
-                    setGender(data.gender);
-                }
-
-                // Interested In
-                if (data.interestedIn && Array.isArray(data.interestedIn)) {
-                    setInterestedIn(data.interestedIn);
-                }
-
-                // Height
-                if (data.height) {
-                    setHeight(data.height);
-                }
-
-                // DOB
-
-
-                // Profile Relation Fields
                 if (data.profile) {
-                    /* Type cast as any because typescript might not know the shape of the joined profile relation if using generated types incorrectly */
                     const profileData = data.profile as any;
-
                     setBio(profileData.bio || '');
-
-                    // Prompts
-                    // CHANGED: Logic to map DB prompts to our fixed 1-slot array
                     if (profileData.prompts && Array.isArray(profileData.prompts) && profileData.prompts.length > 0) {
-                        // Take the first prompt, ignore others if any
                         setSelectedPrompts([profileData.prompts[0]]);
                     } else {
                         setSelectedPrompts([null]);
                     }
 
-                    // Availability
                     if (profileData.availableNext8Days && Array.isArray(profileData.availableNext8Days)) {
                         const index = profileData.availableNext8Days.findIndex((isAvailable: boolean) => isAvailable === true);
                         setAvailableDayIndex(index !== -1 ? index : null);
                     }
                 }
 
-                // Profile Data for Initial State - handle array or object
                 const profileDataForState = (data.profile && Array.isArray(data.profile)) ? data.profile[0] : (data.profile || {});
-
-                // Set Initial State for change detection
                 setInitialState({
                     photos: (data.photos || []).sort((a: any, b: any) => a.position - b.position).map((p: any) => p.id),
                     firstName: data.displayName || '',
@@ -209,7 +138,6 @@ if (currentPhotosRep !== initialPhotosRep) return true;
                         ? (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true)
                         : null,
                 });
-
             } catch (err) {
                 console.error('Error fetching full profile:', err);
                 Alert.alert('Error', 'Failed to load profile data');
@@ -217,13 +145,9 @@ if (currentPhotosRep !== initialPhotosRep) return true;
                 setIsLoading(false);
             }
         };
-
         loadProfileData();
     }, [user]);
 
-
-    // --- Handlers: Prompts ---
-    // CHANGED: Use slot index logic
     const handleSlotPress = (index: number) => {
         setActiveSlotIndex(index);
         setPromptModalVisible(true);
@@ -231,43 +155,29 @@ if (currentPhotosRep !== initialPhotosRep) return true;
 
     const handleSavePrompt = (data: { question: string; answer: string }) => {
         if (activeSlotIndex === null) return;
-
         const newPrompts = [...selectedPrompts];
         newPrompts[activeSlotIndex] = {
-            id: Date.now().toString(), // Helper to generate ID
+            id: Date.now().toString(),
             question: data.question,
             answer: data.answer,
         };
-
         setSelectedPrompts(newPrompts);
         setPromptModalVisible(false);
         setActiveSlotIndex(null);
     };
 
-    const handleClearSlot = (index: number) => {
-        const newPrompts = [...selectedPrompts];
-        newPrompts[index] = null;
-        setSelectedPrompts(newPrompts);
-    };
-
-    // CHANGED: Filter logic based on prompts.tsx
     const availablePrompts = PREDEFINED_PROMPTS.filter(p => {
         const isUsed = selectedPrompts.some(sp => sp?.question === p);
         const currentQuestion = activeSlotIndex !== null ? selectedPrompts[activeSlotIndex]?.question : null;
         return !isUsed || (currentQuestion === p);
     });
 
-    // --- Handler: Save All ---
-
     const handleSaveAll = async () => {
         if (!user) return;
-
-        // 0. Check for pending uploads
         if (photos.some(p => p.status === 'uploading')) {
             Alert.alert('Please Wait', 'Photos are still uploading...');
             return;
         }
-
         if (photos.some(p => p.status === 'error')) {
             Alert.alert('Error', 'Some photos failed to upload. Please remove them.');
             return;
@@ -275,14 +185,12 @@ if (currentPhotosRep !== initialPhotosRep) return true;
 
         setIsSaving(true);
         try {
-            // 1. Validate Profile
             if (interestedIn.length === 0) {
                 Alert.alert('Required', 'Please select at least one "Interested In" preference.');
                 setIsSaving(false);
                 return;
             }
 
-            // 2. Update Users Table
             const { error: userError } = await supabase
                 .from('users')
                 .update({
@@ -296,15 +204,12 @@ if (currentPhotosRep !== initialPhotosRep) return true;
 
             if (userError) throw userError;
 
-            // 3. Update Profiles Table
             const availabilityArray = new Array(8).fill(false);
             if (availableDayIndex !== null && availableDayIndex >= 0 && availableDayIndex < 8) {
                 availabilityArray[availableDayIndex] = true;
             }
 
             const validPrompts = selectedPrompts.filter(p => p !== null);
-
-            // Accessing profile table, handling if it doesn't exist (upsert)
             const { error: profileError } = await supabase
                 .from('profiles')
                 .upsert({
@@ -319,7 +224,6 @@ if (currentPhotosRep !== initialPhotosRep) return true;
             await refreshProfile();
             Alert.alert('Success', 'Profile updated successfully');
             router.back();
-
         } catch (error: any) {
             console.error('Error saving profile:', error);
             Alert.alert('Error', error.message || 'Failed to update profile');
@@ -329,7 +233,6 @@ if (currentPhotosRep !== initialPhotosRep) return true;
     };
 
     const handleSelectDay = (index: number) => {
-        // Toggle: if already selected, deselect (set to null), else select
         setAvailableDayIndex(availableDayIndex === index ? null : index);
     };
 
@@ -339,15 +242,8 @@ if (currentPhotosRep !== initialPhotosRep) return true;
                 'Unsaved Changes',
                 'You have unsaved changes. Are you sure you want to discard them?',
                 [
-                    {
-                        text: 'Continue Editing',
-                        style: 'cancel',
-                    },
-                    {
-                        text: 'Discard',
-                        style: 'destructive',
-                        onPress: () => router.back(),
-                    },
+                    { text: 'Continue Editing', style: 'cancel' },
+                    { text: 'Discard', style: 'destructive', onPress: () => router.back() },
                 ]
             );
         } else {
@@ -364,217 +260,173 @@ if (currentPhotosRep !== initialPhotosRep) return true;
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-            <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100">
-                <TouchableOpacity onPress={handleBack} className="p-2">
-                    <Ionicons name="arrow-back" size={24} color="black" />
-                </TouchableOpacity>
-                <Text className="text-lg font-bold">Edit Profile</Text>
-                <View className="w-12 items-end">
-                    {hasChanges && (
-                        <TouchableOpacity onPress={handleSaveAll} disabled={isSaving}>
-                            {isSaving ? (
-                                <ActivityIndicator size="small" color="black" />
-                            ) : (
-                                <Text className="font-bold text-[15px] text-blue-600">Save</Text>
-                            )}
-                        </TouchableOpacity>
-                    )}
+        <View className="flex-1 bg-white">
+            {/* PROGRESS BANNER - Overlaying EVERYTHING including header */}
+            {(isUploading || photos.some(p => p.status === 'error')) && (
+                <View 
+                    className={`absolute top-0 left-0 right-0 bottom-0 z-[100] items-center justify-start pt-14 ${
+                        photos.some(p => p.status === 'error') ? 'bg-red-500' : 'bg-black/80'
+                    }`}
+                >
+                    <View className="flex-row items-center px-4 py-3">
+                        {!photos.some(p => p.status === 'error') && <ActivityIndicator size="small" color="white" className="mr-3" />}
+                        <Text className="text-white font-bold text-sm">
+                            {photos.some(p => p.status === 'error')
+                                ? `${photos.filter(p => p.status === 'error').length} upload(s) failed`
+                                : `Uploading ${photos.filter(p => p.localUri && p.status === 'uploaded').length}/${photos.filter(p => p.localUri).length} images...`}
+                        </Text>
+                    </View>
                 </View>
-            </View>
+            )}
 
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-            >
-                <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-
-                    {/* --- PHOTOS --- */}
-                    <Text className="text-lg font-bold mb-3">Photos</Text>
-                    <View className="mb-8">
-                        <PhotoGrid
-                            photos={photos}
-                            onChange={setPhotos}
-                            maxPhotos={6}
-                        />
+            <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+                {/* HEADER */}
+                <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100 relative">
+                    <TouchableOpacity onPress={handleBack} disabled={isUploading} className="p-2">
+                        <Ionicons name="arrow-back" size={24} color={isUploading ? "gray" : "black"} />
+                    </TouchableOpacity>
+                    <Text className="text-lg font-bold">Edit Profile</Text>
+                    <View className="w-12 items-end">
+                        {hasChanges && (
+                            <TouchableOpacity
+                                onPress={handleSaveAll}
+                                disabled={isSaving || isUploading}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color="black" />
+                                ) : (
+                                    <Text className={`font-bold text-[15px] ${isUploading ? 'text-gray-400' : 'text-blue-600'}`}>
+                                        Save
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </View>
+                </View>
 
-                    {/* --- AVAILABILITY --- */}
-                    <View className="mb-8">
-                        <Text className="text-lg font-bold mb-3">Availability</Text>
-                        <Text className="text-gray-500 text-sm mb-4">Select the day you are available.</Text>
-                        <AvailabilityPicker
-                            selectedDayIndex={availableDayIndex}
-                            onSelectDay={handleSelectDay}
-                        />
-                    </View>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    className="flex-1"
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                >
+                    <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                        <Text className="text-lg font-bold mb-3">Photos</Text>
+                        <View className="mb-8">
+                            <PhotoGrid photos={photos} onChange={setPhotos} maxPhotos={6} />
+                        </View>
 
-                    {/* Bio */}
-                    <BioInput
-                        value={bio}
-                        onChangeText={setBio}
-                        placeholder=""
-                    />
+                        <View className="mb-8">
+                            <Text className="text-lg font-bold mb-3">Availability</Text>
+                            <Text className="text-gray-500 text-sm mb-4">Select the day you are available.</Text>
+                            <AvailabilityPicker selectedDayIndex={availableDayIndex} onSelectDay={handleSelectDay} />
+                        </View>
 
-                    {/* --- PROMPTS --- */}
-                    <View className="mb-8">
-                        <Text className="text-lg font-bold mb-3">Prompts</Text>
+                        <BioInput value={bio} onChangeText={setBio} placeholder="" />
 
-                        <View className="gap-y-3">
-                            {/* Single Prompt Slot - Using index 0 */}
-                            <PromptSlot
-                                data={selectedPrompts[0]}
-                                onPress={() => handleSlotPress(0)}
-                                showEditIcon={true}
+                        <View className="mb-8">
+                            <Text className="text-lg font-bold mb-3">Prompts</Text>
+                            <View className="gap-y-3">
+                                <PromptSlot data={selectedPrompts[0]} onPress={() => handleSlotPress(0)} showEditIcon={true} />
+                            </View>
+                        </View>
+
+                        <Text className="text-lg font-bold mb-3">About You</Text>
+                        <View className="mb-4">
+                            <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
+                            <TextInput
+                                value={firstName}
+                                onChangeText={setFirstName}
+                                className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
+                                placeholder="Name"
                             />
                         </View>
-                    </View>
 
-                    {/* --- DETAILS --- */}
-                    <Text className="text-lg font-bold mb-3">About You</Text>
-
-                    {/* Name */}
-                    <View className="mb-4">
-                        <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
-                        <TextInput
-                            value={firstName}
-                            onChangeText={setFirstName}
-                            className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
-                            placeholder="Name"
-                        />
-                    </View>
-
-                    {/* Gender */}
-                    <View className="mb-4">
-                        <View className="flex-row items-center mb-2">
-                            <Ionicons name="person-outline" size={16} color="gray" style={{ marginRight: 4 }} />
-                            <Text className="text-gray-500 text-xs uppercase">Gender</Text>
-                        </View>
-                        <View className="flex-row gap-3">
-                            {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
-                                <TouchableOpacity
-                                    key={option}
-                                    onPress={() => setGender(option)}
-                                    className={`flex-1 py-3 items-center rounded-xl border ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'
-                                        }`}
-                                >
-                                    <Text className={`font-medium ${gender === option ? 'text-white' : 'text-black'}`}>
-                                        {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Interested In */}
-                    <View className="mb-4">
-                        <View className="flex-row items-center mb-2">
-                            <Ionicons name="heart-outline" size={16} color="gray" style={{ marginRight: 4 }} />
-                            <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
-                        </View>
-                        <View className="flex-row gap-3">
-                            {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
-                                const isSelected = interestedIn.includes(option);
-                                return (
+                        <View className="mb-4">
+                            <View className="flex-row items-center mb-2">
+                                <Ionicons name="person-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                <Text className="text-gray-500 text-xs uppercase">Gender</Text>
+                            </View>
+                            <View className="flex-row gap-3">
+                                {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
                                     <TouchableOpacity
                                         key={option}
-                                        onPress={() => {
-                                            setInterestedIn(prev => {
-                                                if (prev.includes(option)) {
-                                                    return prev.filter(p => p !== option);
-                                                } else {
-                                                    return [...prev, option];
-                                                }
-                                            });
-                                        }}
-                                        className={`flex-1 py-3 items-center rounded-xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'
-                                            }`}
+                                        onPress={() => setGender(option)}
+                                        className={`flex-1 py-3 items-center rounded-xl border ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
                                     >
-                                        <Text className={`font-medium ${isSelected ? 'text-white' : 'text-black'}`}>
-                                            {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
+                                        <Text className={`font-medium ${gender === option ? 'text-white' : 'text-black'}`}>
+                                            {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
                                         </Text>
                                     </TouchableOpacity>
-                                );
-                            })}
+                                ))}
+                            </View>
                         </View>
-                    </View>
 
-                    {/* Height */}
-                    <View className="mb-4">
-                        <View className="flex-row items-center mb-2">
-                            <Ionicons name="resize-outline" size={16} color="gray" style={{ marginRight: 4 }} />
-                            <Text className="text-gray-500 text-xs uppercase">Height</Text>
+                        <View className="mb-4">
+                            <View className="flex-row items-center mb-2">
+                                <Ionicons name="heart-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
+                            </View>
+                            <View className="flex-row gap-3">
+                                {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
+                                    const isSelected = interestedIn.includes(option);
+                                    return (
+                                        <TouchableOpacity
+                                            key={option}
+                                            onPress={() => {
+                                                setInterestedIn(prev => prev.includes(option) ? prev.filter(p => p !== option) : [...prev, option]);
+                                            }}
+                                            className={`flex-1 py-3 items-center rounded-xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
+                                        >
+                                            <Text className={`font-medium ${isSelected ? 'text-white' : 'text-black'}`}>
+                                                {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => setHeightModalVisible(true)}
-                            className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
-                        >
-                            <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
-                                {height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : 'Select height'}
-                            </Text>
-                            <Ionicons name="chevron-forward" size={20} color="gray" />
-                        </TouchableOpacity>
-                    </View>
 
-                    {/* DOB */}
+                        <View className="mb-4">
+                            <View className="flex-row items-center mb-2">
+                                <Ionicons name="resize-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                <Text className="text-gray-500 text-xs uppercase">Height</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setHeightModalVisible(true)}
+                                className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
+                            >
+                                <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
+                                    {height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : 'Select height'}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={20} color="gray" />
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
 
-
-
-
-                </ScrollView>
-
-                {/* --- FOOTER REMOVED --- */}
-
-            </KeyboardAvoidingView>
-
-            {/* --- PROMPT MODAL --- */}
             <PromptModal
                 visible={isPromptModalVisible}
-                onClose={() => {
-                    setPromptModalVisible(false);
-                    setActiveSlotIndex(null);
-                }}
+                onClose={() => { setPromptModalVisible(false); setActiveSlotIndex(null); }}
                 onSave={handleSavePrompt}
                 initialData={activeSlotIndex !== null ? selectedPrompts[activeSlotIndex] : null}
                 availablePrompts={availablePrompts}
             />
 
-            {/* --- HEIGHT MODAL --- */}
-            <Modal
-                visible={isHeightModalVisible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setHeightModalVisible(false)}
-            >
+            <Modal visible={isHeightModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setHeightModalVisible(false)}>
                 <SafeAreaView className="flex-1 bg-white">
                     <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100">
-                        <TouchableOpacity onPress={() => setHeightModalVisible(false)} className="p-2">
-                            <Text className="text-base text-gray-500">Cancel</Text>
-                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setHeightModalVisible(false)} className="p-2"><Text className="text-base text-gray-500">Cancel</Text></TouchableOpacity>
                         <Text className="text-lg font-bold">Select Height</Text>
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (tempHeight) {
-                                    setHeight(`${tempHeight.feet} ${tempHeight.inches}`);
-                                }
-                                setHeightModalVisible(false);
-                            }}
-                            className="p-2"
-                        >
+                        <TouchableOpacity onPress={() => { if (tempHeight) setHeight(`${tempHeight.feet} ${tempHeight.inches}`); setHeightModalVisible(false); }} className="p-2">
                             <Text className="text-base font-semibold text-black">Done</Text>
                         </TouchableOpacity>
                     </View>
-
                     <View className="flex-1 justify-center">
-                        <HeightPicker
-                            initialHeight={height}
-                            onHeightChange={setTempHeight}
-                        />
+                        <HeightPicker initialHeight={height} onHeightChange={setTempHeight} />
                     </View>
                 </SafeAreaView>
             </Modal>
-
-        </SafeAreaView>
+        </View>
     );
 }

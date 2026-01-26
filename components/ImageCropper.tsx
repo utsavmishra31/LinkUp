@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
     Dimensions,
     Modal,
-    SafeAreaView,
     Text,
     TouchableOpacity,
     View
@@ -14,6 +13,7 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -170,42 +170,48 @@ export default function ImageCropper({
 
     return (
         <Modal visible={visible} animationType="slide" transparent={false}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
+            <GestureHandlerRootView className="flex-1">
                 <SafeAreaView className="flex-1 bg-black">
-                    <View className="flex-row justify-between items-center px-4 py-2 z-10">
-                        <TouchableOpacity onPress={onCancel}>
-                            <Ionicons name="close" size={28} color="white" />
-                        </TouchableOpacity>
-                        <Text className="text-white font-semibold text-lg">Crop Photo</Text>
-                        <TouchableOpacity onPress={handleCrop}>
-                            <Ionicons name="checkmark" size={28} color="#FF5864" />
-                        </TouchableOpacity>
-                    </View>
 
-                    <View className="flex-1 justify-center items-center overflow-hidden">
+
+
+                    {/* BODY */}
+                    <View className="flex-1 items-center justify-center">
                         <View
-                            style={{
-                                width: CROP_WIDTH,
-                                height: CROP_HEIGHT,
-                                overflow: 'hidden',
-                                borderWidth: 1,
-                                borderColor: 'white',
-                                borderRadius: 10,
-                            }}
+                            style={{ width: CROP_WIDTH, height: CROP_HEIGHT }}
+                            className="overflow-hidden border border-white rounded-xl"
                         >
                             <GestureDetector gesture={composedGesture}>
                                 <Animated.Image
                                     source={{ uri: imageUri }}
-                                    style={[{ width: '100%', height: '100%' }, animatedStyle]}
+                                    className="w-full h-full"
+                                    style={animatedStyle}
                                     resizeMode="cover"
                                     onLoad={handleImageLoad}
                                 />
                             </GestureDetector>
                         </View>
+
                         <Text className="text-gray-400 text-sm mt-4">
                             Pinch to zoom, drag to adjust
                         </Text>
                     </View>
+
+                    {/* BOTTOM CONTROLS */}
+                    <View className="px-6 pb-2 flex-row items-center justify-between">
+                        <TouchableOpacity onPress={onCancel} hitSlop={10} className="p-2">
+                            <Ionicons name="close" size={32} color="white" />
+                        </TouchableOpacity>
+
+                        <Text className="text-white text-lg font-semibold">
+                            Crop Photo
+                        </Text>
+
+                        <TouchableOpacity onPress={handleCrop} hitSlop={10} className="p-2">
+                            <Ionicons name="checkmark" size={32} color="#FF5864" />
+                        </TouchableOpacity>
+                    </View>
+
                 </SafeAreaView>
             </GestureHandlerRootView>
         </Modal>
