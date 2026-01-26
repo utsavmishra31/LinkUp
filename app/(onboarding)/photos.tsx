@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function PhotosUpload() {
     const [photos, setPhotos] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
 
     // Derived state or constant for "Main" label logic
     const userHasPhotos = photos.length > 0;
@@ -42,6 +43,7 @@ export default function PhotosUpload() {
         try {
             // Upload images sequentially
             for (let i = 0; i < photos.length; i++) {
+                setCurrentUploadIndex(i + 1);
                 try {
                     await uploadImage(photos[i]);
                 } catch (e) {
@@ -95,6 +97,7 @@ export default function PhotosUpload() {
                         onPress={handleContinue}
                         disabled={!canContinue}
                         isLoading={isSubmitting}
+                        loadingText={isSubmitting ? `Uploading ${currentUploadIndex}/${photos.length}` : undefined}
                     />
 
                     <Pressable
