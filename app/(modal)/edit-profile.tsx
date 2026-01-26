@@ -1,3 +1,5 @@
+import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } from '@/app/(onboarding)/prompts';
+import { PhotoGrid } from '@/components/PhotoGrid';
 import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -8,46 +10,18 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
-    Image,
-    Keyboard,
     KeyboardAvoidingView,
-    Modal,
     Platform,
-    Pressable,
     ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Types & Constants ---
 
-interface PromptData {
-    id: string;
-    question: string;
-    answer: string;
-}
-
-const PREDEFINED_PROMPTS = [
-    "A non-negotiable for me is",
-    "Simple pleasures",
-    "Typical Sunday",
-    "I'm looking for",
-    "My simple pleasures",
-    "A random fact I love",
-    "I geek out on",
-    "Two truths and a lie",
-    "Believe it or not, I",
-    "Best travel story",
-    "Dating me is like",
-    "I want someone who",
-    "My most controversial opinion is",
-    "The way to win me over is",
-    "Biggest risk I've taken",
-];
 
 // Generate 8 days starting from today (today + next 7 days)
 const getNext8Days = () => {
@@ -99,9 +73,6 @@ export default function EditProfileScreen() {
 
     // --- Prompt Modal State ---
     const [isPromptModalVisible, setPromptModalVisible] = useState(false);
-    const [modalStep, setModalStep] = useState<'SELECT_QUESTION' | 'TYPE_ANSWER'>('SELECT_QUESTION');
-    const [tempQuestion, setTempQuestion] = useState('');
-    const [tempAnswer, setTempAnswer] = useState('');
     const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
 
     // --- Data Fetching ---
@@ -244,17 +215,20 @@ export default function EditProfileScreen() {
         }
     };
 
-    const removePhoto = async (photoId: string) => {
+    const removePhoto = async (photoId: string | number) => {
+        const id = typeof photoId === 'number' ? photos[photoId]?.id : photoId;
+        if (!id) return;
+
         try {
             setIsSaving(true);
             const { error } = await supabase
                 .from('photos')
                 .delete()
-                .eq('id', photoId);
+                .eq('id', id);
 
             if (error) throw error;
 
-            setPhotos(prev => prev.filter(p => p.id !== photoId));
+            setPhotos(prev => prev.filter(p => p.id !== id));
             await refreshProfile();
         } catch (error: any) {
             console.error('Error deleting photo:', error);
@@ -269,59 +243,36 @@ export default function EditProfileScreen() {
     const handleDobMonth = (text: string) => { setDobMonth(text); if (text.length === 2) dobYearRef.current?.focus(); };
 
     // --- Handlers: Prompts ---
-    const handlePromptPress = (prompt: PromptData | null, index?: number) => {
-        if (prompt) {
-            setEditingPromptId(prompt.id);
-            setTempQuestion(prompt.question);
-            setTempAnswer(prompt.answer);
-            setModalStep('TYPE_ANSWER');
-        } else {
-            setEditingPromptId(null);
-            setTempQuestion('');
-            setTempAnswer('');
-            setModalStep('SELECT_QUESTION');
-        }
+    const handlePromptPress = (prompt: PromptData | null) => {
+        setEditingPromptId(prompt ? prompt.id : null);
         setPromptModalVisible(true);
     };
 
-    const handleSelectQuestion = (question: string) => {
-        setTempQuestion(question);
-        setModalStep('TYPE_ANSWER');
-    };
-
-    const handleSavePrompt = () => {
-        if (!tempAnswer.trim()) return;
-
+    const handleSavePrompt = (data: { question: string; answer: string }) => {
         let newPrompts = [...selectedPrompts];
 
         if (editingPromptId) {
             newPrompts = newPrompts.map(p =>
                 p?.id === editingPromptId
-                    ? { ...p, question: tempQuestion, answer: tempAnswer.trim() }
+                    ? { ...p, question: data.question, answer: data.answer }
                     : p
             );
         } else {
-            newPrompts.push({
+            // Enforce single prompt: Override index 0
+            newPrompts = [{
                 id: Date.now().toString(),
-                question: tempQuestion,
-                answer: tempAnswer.trim(),
-            });
+                question: data.question,
+                answer: data.answer,
+            }];
         }
 
         setSelectedPrompts(newPrompts);
-        closePromptModal();
+        setPromptModalVisible(false);
+        setEditingPromptId(null);
     };
 
     const deletePrompt = (id: string) => {
         setSelectedPrompts(prev => prev.filter(p => p?.id !== id));
-    };
-
-    const closePromptModal = () => {
-        setPromptModalVisible(false);
-        setEditingPromptId(null);
-        setModalStep('SELECT_QUESTION');
-        setTempQuestion('');
-        setTempAnswer('');
     };
 
     const availablePrompts = PREDEFINED_PROMPTS.filter(p => {
@@ -426,43 +377,34 @@ export default function EditProfileScreen() {
 
                     {/* --- PHOTOS --- */}
                     <Text className="text-lg font-bold mb-3">Photos</Text>
-                    <View className="flex-row flex-wrap justify-between gap-y-4 mb-8">
-                        {[...Array(6)].map((_, index) => {
-                            const photo = photos[index];
-                            return (
-                                <Pressable
-                                    key={index}
-                                    onPress={() => !photo && pickImage()}
-                                    className={`w-[31%] aspect-[3/4] rounded-xl overflow-hidden relative ${photo ? 'bg-gray-100' : 'bg-gray-50 border-2 border-dashed border-gray-300'}`}
-                                >
-                                    {photo ? (
-                                        <>
-                                            <Image
-                                                source={{ uri: photo.imageUrl?.startsWith('http') ? photo.imageUrl : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${photo.imageUrl}` }}
-                                                className="w-full h-full"
-                                                resizeMode="cover"
-                                            />
-                                            <Pressable
-                                                onPress={() => removePhoto(photo.id)}
-                                                className="absolute top-1 right-1 bg-white/80 rounded-full p-1"
-                                                hitSlop={10}
-                                            >
-                                                <Ionicons name="close" size={14} color="black" />
-                                            </Pressable>
-                                            {index === 0 && (
-                                                <View className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md">
-                                                    <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
-                                                </View>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <View className="flex-1 items-center justify-center">
-                                            <Ionicons name="add" size={24} color="#9ca3af" />
-                                        </View>
-                                    )}
-                                </Pressable>
-                            );
-                        })}
+                    <View className="mb-8">
+                        <PhotoGrid
+                            photos={photos}
+                            onAddPhoto={pickImage}
+                            onRemovePhoto={removePhoto}
+                            maxPhotos={6}
+                        />
+                    </View>
+
+                    {/* Bio */}
+                    <BioInput
+                        value={bio}
+                        onChangeText={setBio}
+                        placeholder="Write something about yourself..."
+                    />
+
+                    {/* --- PROMPTS --- */}
+                    <View className="mb-8">
+                        <Text className="text-lg font-bold mb-3">Prompts</Text>
+
+                        <View className="gap-y-3">
+                            {/* Single Prompt Slot */}
+                            <PromptSlot
+                                data={selectedPrompts[0] || null}
+                                onPress={() => handlePromptPress(selectedPrompts[0] || null)}
+                                onClear={selectedPrompts[0] ? () => deletePrompt(selectedPrompts[0]!.id) : undefined}
+                            />
+                        </View>
                     </View>
 
                     {/* --- DETAILS --- */}
@@ -519,57 +461,6 @@ export default function EditProfileScreen() {
                                 maxLength={4}
                                 className="flex-[1.5] bg-gray-50 p-4 rounded-xl text-black border border-gray-200 text-center"
                             />
-                        </View>
-                    </View>
-
-                    {/* Bio */}
-                    <View className="mb-8">
-                        <Text className="text-lg font-bold mb-3">Bio</Text>
-                        <TextInput
-                            className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-black text-base leading-6 min-h-[100px] align-top"
-                            placeholder="Write something about yourself..."
-                            multiline
-                            value={bio}
-                            onChangeText={setBio}
-                            maxLength={500}
-                        />
-                        <Text className="text-right text-gray-400 text-xs mt-1">{bio.length}/500</Text>
-                    </View>
-
-                    {/* --- PROMPTS --- */}
-                    <View className="mb-8">
-                        <View className="flex-row justify-between items-center mb-3">
-                            <Text className="text-lg font-bold">Prompts</Text>
-                            {selectedPrompts.length < 3 && (
-                                <TouchableOpacity onPress={() => handlePromptPress(null)}>
-                                    <Text className="text-blue-500 font-semibold">+ Add</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        <View className="gap-y-3">
-                            {selectedPrompts.map((prompt) => (
-                                prompt && (
-                                    <View key={prompt.id} className="relative">
-                                        <TouchableOpacity
-                                            onPress={() => handlePromptPress(prompt)}
-                                            className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
-                                        >
-                                            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{prompt.question}</Text>
-                                            <Text className="text-base text-black">{prompt.answer}</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={() => deletePrompt(prompt.id)}
-                                            className="absolute top-2 right-2 p-2 bg-gray-50 rounded-full border border-gray-100"
-                                        >
-                                            <Ionicons name="close" size={14} color="gray" />
-                                        </TouchableOpacity>
-                                    </View>
-                                )
-                            ))}
-                            {selectedPrompts.length === 0 && (
-                                <Text className="text-gray-400 italic">No prompts added.</Text>
-                            )}
                         </View>
                     </View>
 
@@ -636,84 +527,17 @@ export default function EditProfileScreen() {
             </KeyboardAvoidingView>
 
             {/* --- PROMPT MODAL --- */}
-            <Modal
+            {/* --- PROMPT MODAL --- */}
+            <PromptModal
                 visible={isPromptModalVisible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={closePromptModal}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    className="flex-1 bg-white"
-                >
-                    <SafeAreaView className="flex-1">
-                        <View className="px-6 py-4 border-b border-gray-100 flex-row justify-between items-center bg-white z-10 w-full">
-                            {modalStep === 'TYPE_ANSWER' ? (
-                                <TouchableOpacity onPress={() => setModalStep('SELECT_QUESTION')}>
-                                    <Ionicons name="chevron-back" size={24} color="black" />
-                                </TouchableOpacity>
-                            ) : (
-                                <View className="w-6" />
-                            )}
-                            <Text className="font-bold text-lg text-center flex-1">
-                                {modalStep === 'SELECT_QUESTION' ? 'Pick a Prompt' : 'Your Answer'}
-                            </Text>
-                            <TouchableOpacity onPress={closePromptModal}>
-                                <Ionicons name="close" size={24} color="black" />
-                            </TouchableOpacity>
-                        </View>
-
-                        {modalStep === 'SELECT_QUESTION' ? (
-                            <ScrollView className="flex-1 px-6">
-                                <View className="py-4 gap-y-1">
-                                    {availablePrompts.map((question) => (
-                                        <TouchableOpacity
-                                            key={question}
-                                            onPress={() => handleSelectQuestion(question)}
-                                            className="py-4 border-b border-gray-50 active:bg-gray-50 -mx-6 px-6"
-                                        >
-                                            <Text className="text-base text-gray-900 font-medium">{question}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </ScrollView>
-                        ) : (
-                            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                                <View className="flex-1 px-6 pt-6">
-                                    <View className="mb-4">
-                                        <Text className="text-sm font-bold text-gray-500 uppercase mb-2 tracking-wide">{tempQuestion}</Text>
-                                    </View>
-                                    <TextInput
-                                        className="text-xl text-black leading-7 min-h-[120px] align-top"
-                                        placeholder="Type your answer here..."
-                                        placeholderTextColor="#9ca3af"
-                                        multiline
-                                        autoFocus
-                                        value={tempAnswer}
-                                        onChangeText={setTempAnswer}
-                                        maxLength={150}
-                                    />
-                                    <View className="items-end mt-2">
-                                        <Text className={`text-xs ${tempAnswer.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
-                                            {150 - tempAnswer.length}
-                                        </Text>
-                                    </View>
-                                    <View className="mt-8">
-                                        <TouchableOpacity
-                                            onPress={handleSavePrompt}
-                                            disabled={!tempAnswer.trim()}
-                                            className={`w-full py-4 rounded-full items-center ${tempAnswer.trim() ? 'bg-black' : 'bg-gray-200'}`}
-                                        >
-                                            <Text className={`font-bold text-base ${tempAnswer.trim() ? 'text-white' : 'text-gray-400'}`}>Save Answer</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </TouchableWithoutFeedback>
-                        )}
-
-                    </SafeAreaView>
-                </KeyboardAvoidingView>
-            </Modal>
+                onClose={() => {
+                    setPromptModalVisible(false);
+                    setEditingPromptId(null);
+                }}
+                onSave={handleSavePrompt}
+                initialData={editingPromptId ? selectedPrompts.find(p => p?.id === editingPromptId) : null}
+                availablePrompts={availablePrompts}
+            />
 
         </SafeAreaView>
     );

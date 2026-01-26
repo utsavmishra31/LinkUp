@@ -1,12 +1,12 @@
+import { PhotoGrid } from '@/components/PhotoGrid';
 import { ArrowButton } from '@/components/ui/ArrowButton';
 import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PhotosUpload() {
@@ -57,8 +57,9 @@ export default function PhotosUpload() {
         }
     };
 
-    const removePhoto = (index: number) => {
-        setPhotos(prev => prev.filter((_, i) => i !== index));
+    const removePhoto = (index: string | number) => {
+        const numIndex = typeof index === 'string' ? parseInt(index) : index;
+        setPhotos(prev => prev.filter((_, i) => i !== numIndex));
     };
 
     const uploadImage = async (uri: string, index: number) => {
@@ -152,47 +153,12 @@ export default function PhotosUpload() {
                 </View>
 
                 {/* Photo Grid */}
-                <View className="flex-row flex-wrap justify-between gap-y-4">
-                    {[...Array(6)].map((_, index) => {
-                        const photoUri = photos[index];
-                        return (
-                            <Pressable
-                                key={index}
-                                onPress={!photoUri ? pickImage : undefined}
-                                className={`w-[31%] aspect-[3/4] rounded-xl overflow-hidden relative ${photoUri ? 'bg-gray-100' : 'bg-gray-100 border-2 border-dashed border-gray-300'
-                                    }`}
-                            >
-                                {photoUri ? (
-                                    <>
-                                        <Image
-                                            source={{ uri: photoUri }}
-                                            className="w-full h-full"
-                                            resizeMode="cover"
-                                        />
-                                        <Pressable
-                                            onPress={() => removePhoto(index)}
-                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1"
-                                            hitSlop={10}
-                                        >
-                                            <Ionicons name="close" size={16} color="black" />
-                                        </Pressable>
-
-                                        {/* Main Photo Indicator */}
-                                        {index === 0 && (
-                                            <View className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md">
-                                                <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
-                                            </View>
-                                        )}
-                                    </>
-                                ) : (
-                                    <View className="flex-1 items-center justify-center">
-                                        <Ionicons name="add" size={32} color="#9ca3af" />
-                                    </View>
-                                )}
-                            </Pressable>
-                        );
-                    })}
-                </View>
+                <PhotoGrid
+                    photos={photos}
+                    onAddPhoto={pickImage}
+                    onRemovePhoto={removePhoto}
+                    maxPhotos={6}
+                />
 
                 <View className="flex-1" />
 
