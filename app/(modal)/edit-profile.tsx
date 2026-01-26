@@ -222,7 +222,7 @@ export default function EditProfileScreen() {
             if (profileError) throw profileError;
 
             await refreshProfile();
-            Alert.alert('Success', 'Profile updated successfully');
+
             router.back();
         } catch (error: any) {
             console.error('Error saving profile:', error);
@@ -263,10 +263,9 @@ export default function EditProfileScreen() {
         <View className="flex-1 bg-white">
             {/* PROGRESS BANNER - Overlaying EVERYTHING including header */}
             {(isUploading || photos.some(p => p.status === 'error')) && (
-                <View 
-                    className={`absolute top-0 left-0 right-0 bottom-0 z-[100] items-center justify-start pt-14 ${
-                        photos.some(p => p.status === 'error') ? 'bg-red-500' : 'bg-black/80'
-                    }`}
+                <View
+                    className={`absolute top-0 left-0 right-0 bottom-0 z-[100] items-center justify-start pt-14 ${photos.some(p => p.status === 'error') ? 'bg-red-500' : 'bg-black/80'
+                        }`}
                 >
                     <View className="flex-row items-center px-4 py-3">
                         {!photos.some(p => p.status === 'error') && <ActivityIndicator size="small" color="white" className="mr-3" />}
