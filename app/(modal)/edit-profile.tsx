@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -33,9 +33,7 @@ export default function EditProfileScreen() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [bio, setBio] = useState('');
-    const [dobDay, setDobDay] = useState('');
-    const [dobMonth, setDobMonth] = useState('');
-    const [dobYear, setDobYear] = useState('');
+
 
     // CHANGED: Initialize with [null] for single slot, matching prompts.tsx
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
@@ -43,8 +41,7 @@ export default function EditProfileScreen() {
     const [availableDayIndex, setAvailableDayIndex] = useState<number | null>(null);
 
     // --- Refs for DOB inputs ---
-    const dobMonthRef = useRef<TextInput>(null);
-    const dobYearRef = useRef<TextInput>(null);
+
 
     // --- Prompt Modal State ---
     const [isPromptModalVisible, setPromptModalVisible] = useState(false);
@@ -79,12 +76,7 @@ export default function EditProfileScreen() {
                 setLastName(data.surname || '');
 
                 // DOB
-                if (data.dob) {
-                    const date = new Date(data.dob);
-                    setDobDay(date.getDate().toString().padStart(2, '0'));
-                    setDobMonth((date.getMonth() + 1).toString().padStart(2, '0'));
-                    setDobYear(date.getFullYear().toString());
-                }
+
 
                 // Profile Relation Fields
                 if (data.profile) {
@@ -125,8 +117,7 @@ export default function EditProfileScreen() {
     // uploadImage is now imported from components/PhotoGrid
 
     // --- Handlers: DOB ---
-    const handleDobDay = (text: string) => { setDobDay(text); if (text.length === 2) dobMonthRef.current?.focus(); };
-    const handleDobMonth = (text: string) => { setDobMonth(text); if (text.length === 2) dobYearRef.current?.focus(); };
+
 
     // --- Handlers: Prompts ---
     // CHANGED: Use slot index logic
@@ -170,24 +161,6 @@ export default function EditProfileScreen() {
         setIsSaving(true);
         try {
             // 1. Validate DOB
-            const d = parseInt(dobDay);
-            const m = parseInt(dobMonth);
-            const y = parseInt(dobYear);
-            let dobISO = null;
-            let age = null;
-
-            if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
-                const date = new Date(Date.UTC(y, m - 1, d));
-                dobISO = date.toISOString().split('T')[0];
-
-                const today = new Date();
-                age = today.getFullYear() - y;
-                const mDiff = today.getMonth() - (m - 1);
-                if (mDiff < 0 || (mDiff === 0 && today.getDate() < d)) {
-                    age--;
-                }
-            }
-
             // 1.5 Handle Photos (Uploads and Deletes)
             // Identify deleted photos
             const currentIds = new Set(photos.filter(p => typeof p !== 'string').map(p => (p as any).id));
@@ -210,7 +183,6 @@ export default function EditProfileScreen() {
                 .update({
                     displayName: firstName.trim(),
                     surname: lastName.trim() || null,
-                    ...(dobISO ? { dob: dobISO, age } : {})
                 })
                 .eq('id', user.id);
 
@@ -314,57 +286,17 @@ export default function EditProfileScreen() {
 
                     {/* Name */}
                     <View className="mb-4">
-                        <Text className="text-gray-500 text-xs uppercase mb-1">Display Name</Text>
+                        <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
                         <TextInput
                             value={firstName}
                             onChangeText={setFirstName}
                             className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
-                            placeholder="Your Name"
-                        />
-                    </View>
-
-                    <View className="mb-4">
-                        <Text className="text-gray-500 text-xs uppercase mb-1">Last Name (Optional)</Text>
-                        <TextInput
-                            value={lastName}
-                            onChangeText={setLastName}
-                            className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
-                            placeholder="Last Name"
+                            placeholder="Name"
                         />
                     </View>
 
                     {/* DOB */}
-                    <View className="mb-6">
-                        <Text className="text-gray-500 text-xs uppercase mb-1">Date of Birth</Text>
-                        <View className="flex-row gap-2">
-                            <TextInput
-                                value={dobDay}
-                                onChangeText={handleDobDay}
-                                placeholder="DD"
-                                keyboardType="number-pad"
-                                maxLength={2}
-                                className="flex-1 bg-gray-50 p-4 rounded-xl text-black border border-gray-200 text-center"
-                            />
-                            <TextInput
-                                ref={dobMonthRef}
-                                value={dobMonth}
-                                onChangeText={handleDobMonth}
-                                placeholder="MM"
-                                keyboardType="number-pad"
-                                maxLength={2}
-                                className="flex-1 bg-gray-50 p-4 rounded-xl text-black border border-gray-200 text-center"
-                            />
-                            <TextInput
-                                ref={dobYearRef}
-                                value={dobYear}
-                                onChangeText={setDobYear}
-                                placeholder="YYYY"
-                                keyboardType="number-pad"
-                                maxLength={4}
-                                className="flex-[1.5] bg-gray-50 p-4 rounded-xl text-black border border-gray-200 text-center"
-                            />
-                        </View>
-                    </View>
+
 
                     {/* --- AVAILABILITY --- */}
                     <View className="mb-8">
