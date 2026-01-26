@@ -361,8 +361,8 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                         <Pressable
                                             onPress={() => {
                                                 Alert.alert(
-                                                    'Manage Photo',
-                                                    'Choose an option',
+                                                    '',
+                                                    '',
                                                     [
                                                         {
                                                             text: 'Replace',
