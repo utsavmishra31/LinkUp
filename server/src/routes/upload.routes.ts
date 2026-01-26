@@ -130,10 +130,44 @@ router.delete('/:id', authenticateUser, async (req, res) => {
             }
         }
 
-        // 3. Delete from Database
-        await prisma.photo.delete({
-            where: { id: photoId },
+       // 3. Delete from Database
+await prisma.photo.delete({
+    where: { id: photoId },
+});
+
+// 4. Reorder remaining photos
+const remainingPhotos = await prisma.photo.findMany({
+    where: { userId },
+    orderBy: { position: 'asc' },
+});
+
+await Promise.all(
+    remainingPhotos.map((p, index) =>
+        prisma.photo.update({
+            where: { id: p.id },
+            data: { position: index },
+        })
+    )
+);
+
+// 5. Ensure one primary photo exists
+const primaryExists = await prisma.photo.findFirst({
+    where: { userId, isPrimary: true },
+});
+
+if (!primaryExists) {
+    const firstPhoto = await prisma.photo.findFirst({
+        where: { userId },
+        orderBy: { position: 'asc' },
+    });
+
+    if (firstPhoto) {
+        await prisma.photo.update({
+            where: { id: firstPhoto.id },
+            data: { isPrimary: true },
         });
+    }
+}
 
         res.json({ success: true, message: 'Photo deleted successfully' });
 

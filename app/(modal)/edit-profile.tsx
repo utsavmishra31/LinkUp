@@ -1,8 +1,7 @@
 import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } from '@/app/(onboarding)/prompts';
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
-import { PhotoGrid, PhotoItem, uploadImage } from '@/components/PhotoGrid';
-import { API_URL } from '@/lib/api/client';
+import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,30 +78,21 @@ export default function EditProfileScreen() {
         // 1. Photos
         const currentPhotoIds = photos.map(p => (typeof p === 'string' ? 'new' : p.id)).join(',');
         const initialPhotoIdsStr = initialState.photos.join(',');
-        // If length differs or IDs (order) differ, or any 'new' photo exists (which implies a change)
-        // Actually, if we just check if arrays are equal.
-        // If a photo is new, it won't be in initialState.photos.
-        // Let's refine:
-        // Current state can have PhotoItem objects (existing) or strings (new).
-        // Initial state has only IDs of existing photos in order.
+
 
         const currentIds = photos.map(p => {
             if (typeof p === 'string') return `new-${p}`; // Treat new photos as unique strings
             return p.id;
         });
-        // This simple check might fail if we just reordered? 
-        // We need to compare the sequences.
-        // But wait, initialState.photos stores IDs.
-        // If I added a new photo, it's a change.
-        // If I removed a photo, length changes or ID missing.
-        // If I reordered, order changes.
 
-        // Let's just compare the simplified representations.
-        // For change detection, we can compare the "value" of photos.
-        // Existing photos: ID. New photos: URI.
-        const currentPhotosRep = photos.map(p => typeof p === 'string' ? p : p.id).join('|');
-        const initialPhotosRep = initialState.photos.join('|');
-        if (currentPhotosRep !== initialPhotosRep) return true;
+        const currentPhotosRep = photos
+  .map(p => p.id ?? `new-${p.localUri}`)
+  .join('|');
+
+const initialPhotosRep = initialState.photos.join('|');
+
+if (currentPhotosRep !== initialPhotosRep) return true;
+
 
         // 2. Simple fields
         if (firstName !== initialState.firstName) return true;
@@ -231,16 +221,6 @@ export default function EditProfileScreen() {
         loadProfileData();
     }, [user]);
 
-    // --- Handlers: Photos ---
-
-    const handlePhotosChange = (newPhotos: PhotoItem[]) => {
-        setPhotos(newPhotos);
-    };
-
-    // uploadImage is now imported from components/PhotoGrid
-
-    // --- Handlers: DOB ---
-
 
     // --- Handlers: Prompts ---
     // CHANGED: Use slot index logic
@@ -281,6 +261,18 @@ export default function EditProfileScreen() {
 
     const handleSaveAll = async () => {
         if (!user) return;
+
+        // 0. Check for pending uploads
+        if (photos.some(p => p.status === 'uploading')) {
+            Alert.alert('Please Wait', 'Photos are still uploading...');
+            return;
+        }
+
+        if (photos.some(p => p.status === 'error')) {
+            Alert.alert('Error', 'Some photos failed to upload. Please remove them.');
+            return;
+        }
+
         setIsSaving(true);
         try {
             // 1. Validate Profile
@@ -288,44 +280,6 @@ export default function EditProfileScreen() {
                 Alert.alert('Required', 'Please select at least one "Interested In" preference.');
                 setIsSaving(false);
                 return;
-            }
-
-            // 1.5 Handle Photos (Uploads and Deletes)
-            // DELETION HANDLED IMMEDIATELY ON INTERACTION NOW.
-            // Identify deleted photos
-            const currentIds = new Set(photos.filter(p => typeof p !== 'string').map(p => (p as any).id));
-            const idsToDelete = Array.from(initialPhotoIds).filter(id => !currentIds.has(id));
-
-            if (idsToDelete.length > 0) {
-                const session = await supabase.auth.getSession();
-                const token = session.data.session?.access_token;
-                if (!token) throw new Error('No auth token found');
-
-                // Delete each from backend (R2 + DB)
-                // We do this in parallel or serial. Serial safest for now.
-                for (const id of idsToDelete) {
-                    const response = await fetch(`${API_URL}/upload/${id}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                        },
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        console.error(`Failed to delete photo ${id}`, errorData);
-                        // Optional: throw error or continue? 
-                        // If we throw, we stop the whole save. 
-                        // Might be better to continue but warn? 
-                        // Let's throw to ensure consistency.
-                        throw new Error(errorData.error || 'Failed to delete photo');
-                    }
-                }
-            }
-
-            // Identify new photos to upload
-            const newPhotos = photos.filter(p => typeof p === 'string') as string[];
-            for (const uri of newPhotos) {
-                await uploadImage(uri);
             }
 
             // 2. Update Users Table
@@ -441,7 +395,7 @@ export default function EditProfileScreen() {
                     <View className="mb-8">
                         <PhotoGrid
                             photos={photos}
-                            onChange={handlePhotosChange}
+                            onChange={setPhotos}
                             maxPhotos={6}
                         />
                     </View>

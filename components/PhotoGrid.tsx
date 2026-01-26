@@ -1,14 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { API_URL } from '@/lib/api/client';
 import { supabase } from '@/lib/supabase';
 import ImageCropper from './ImageCropper';
 
-export type PhotoItem = string | { id: string; imageUrl: string; position?: number };
+export type PhotoItem = {
+    id?: string;              // DB id (existing photos)
+    localUri?: string;        // temp while uploading
+    imageUrl?: string;        // R2 public URL or key
+    position?: number;
+    status: 'uploading' | 'uploaded' | 'error';
+};
 
 export const uploadImage = async (uri: string) => {
     const session = await supabase.auth.getSession();
@@ -40,40 +46,128 @@ export const uploadImage = async (uri: string) => {
     return data;
 };
 
+export const deleteImage = async (photoId: string) => {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('No authentication token found');
+
+    const response = await fetch(`${API_URL}/upload/${photoId}`, {
+        method: 'DELETE',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Delete failed');
+    }
+};
+
+
 interface PhotoGridProps {
     photos: PhotoItem[];
-    onChange: (photos: PhotoItem[]) => void;
+    onChange: Dispatch<SetStateAction<PhotoItem[]>>;
     maxPhotos?: number;
 }
 
 export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
     const [cropQueue, setCropQueue] = useState<string[]>([]);
 
+    // We'll use a local helper to handle the actual upload process
+    // so it can be reused by both "add new" (crop) and "edit existing" (picker)
+    const handleUploadProcess = async (uri: string, isEdit: boolean, editIndex: number) => {
+        // Create temp item
+        const tempPhoto: PhotoItem = {
+            localUri: uri,
+            status: 'uploading',
+        };
+
+        if (isEdit) {
+            // Replace existing at index with temp item
+            const updated = [...photos];
+            updated[editIndex] = tempPhoto;
+            onChange(updated);
+        } else {
+            // Add new
+            onChange([...photos, tempPhoto]);
+        }
+
+        try {
+            const uploaded = await uploadImage(uri);
+            // backend returns { imageUrl, id? }
+
+            onChange(prev => {
+                const newPhotos = [...prev];
+                // needed to find the item we just added/updated. 
+                // Since `prev` might have changed (race condition?), reliable way is by reference if we hadn't closed over `tempPhoto`.
+                // Actually, just find by localUri or index.
+                // For edit: index is stable usually.
+                // For add: it's the last one OR we match object reference (if simplistic).
+
+                if (isEdit) {
+                    // Update at specific index
+                    if (newPhotos[editIndex]?.localUri === uri) {
+                        newPhotos[editIndex] = {
+                            ...newPhotos[editIndex],
+                            imageUrl: uploaded.imageUrl,
+                            id: uploaded.id,
+                            status: 'uploaded',
+                        };
+                    }
+                } else {
+                    // Find the item with matching localUri/reference
+                    const idx = newPhotos.findIndex(p => p.localUri === uri && p.status === 'uploading');
+                    if (idx !== -1) {
+                        newPhotos[idx] = {
+                            ...newPhotos[idx],
+                            imageUrl: uploaded.imageUrl,
+                            id: uploaded.id,
+                            status: 'uploaded',
+                        };
+                    }
+                }
+                return newPhotos;
+            });
+        } catch (e) {
+            console.error('Upload failed', e);
+            onChange(prev => {
+                const newPhotos = [...prev];
+                if (isEdit) {
+                    if (newPhotos[editIndex]?.localUri === uri) {
+                        newPhotos[editIndex] = { ...newPhotos[editIndex], status: 'error' };
+                    }
+                } else {
+                    const idx = newPhotos.findIndex(p => p.localUri === uri && p.status === 'uploading');
+                    if (idx !== -1) {
+                        newPhotos[idx] = { ...newPhotos[idx], status: 'error' };
+                    }
+                }
+                return newPhotos;
+            });
+        }
+    };
+
     const activeCropImage = cropQueue.length > 0 ? cropQueue[0] : null;
 
-    const onCropComplete = (croppedUri: string) => {
-        // Add the cropped image to the list
-        onChange([...photos, croppedUri]);
-        // Remove from queue
-        setCropQueue((prev) => prev.slice(1));
+    const onCropComplete = async (croppedUri: string) => {
+        // This is always "Add New" flow in current usage
+        await handleUploadProcess(croppedUri, false, -1);
+        setCropQueue(prev => prev.slice(1));
     };
 
     const onCropCancel = () => {
-        // Skip current image
-        setCropQueue((prev) => prev.slice(1));
+        setCropQueue(prev => prev.slice(1));
     };
 
+
     const getPhotoUri = (photo: PhotoItem): string => {
-        if (typeof photo === 'string') {
-            return photo;
-        }
-        return photo.imageUrl?.startsWith('http')
-            ? photo.imageUrl
-            : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${photo.imageUrl}`;
+        if (photo.localUri) return photo.localUri;
+        if (photo.imageUrl?.startsWith('http')) return photo.imageUrl;
+        return `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${photo.imageUrl}`;
     };
 
     const pickImage = async () => {
-        // Calculate remaining slots
         const remainingSlots = maxPhotos - photos.length;
         if (remainingSlots <= 0) {
             Alert.alert('Limit Reached', `You can only upload up to ${maxPhotos} photos.`);
@@ -90,7 +184,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
 
             if (!result.canceled) {
                 const newPhotos = result.assets.map(asset => asset.uri);
-                // Start the cropping flow
                 setCropQueue(newPhotos);
             }
         } catch (error) {
@@ -104,17 +197,15 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: false,
-                allowsEditing: true, // Enable cropping
+                allowsEditing: true, // Native cropper for edit
                 quality: 0.8,
-                aspect: [3, 4], // Consistent aspect ratio
+                aspect: [3, 4],
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const newUri = result.assets[0].uri;
-                const updatedPhotos = [...photos];
-                // Replace the photo at the specific index
-                updatedPhotos[index] = newUri;
-                onChange(updatedPhotos);
+                // Trigger upload for this index
+                handleUploadProcess(newUri, true, index);
             }
         } catch (error) {
             console.error('Error editing image:', error);
@@ -122,10 +213,26 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
         }
     };
 
-    const removePhoto = (index: number) => {
-        const updatedPhotos = photos.filter((_, i) => i !== index);
-        onChange(updatedPhotos);
-    };
+const removePhoto = async (index: number) => {
+    const photo = photos[index];
+
+    // 1️⃣ Remove instantly from UI
+    onChange(prev => prev.filter((_, i) => i !== index));
+
+    // 2️⃣ Delete instantly from backend
+    if (photo?.id) {
+        try {
+            await deleteImage(photo.id);
+        } catch (err) {
+            console.error(err);
+            Alert.alert(
+                'Delete failed',
+                'Could not delete photo from server'
+            );
+        }
+    }
+};
+
 
     return (
         <>
@@ -158,12 +265,33 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                         </Pressable>
                                     ) : (
                                         <Pressable
-                                            onPress={() => removePhoto(index)}
-                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
-                                            hitSlop={10}
-                                        >
-                                            <Ionicons name="close" size={14} color="black" />
-                                        </Pressable>
+    onPress={() => {
+        Alert.alert(
+            'Manage Photo',
+            'Choose an option',
+            [
+                {
+                    text: 'Replace',
+                    onPress: () => editPhoto(index),
+                },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => removePhoto(index),
+                },
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+            ]
+        );
+    }}
+    className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
+    hitSlop={10}
+>
+    <Ionicons name="close" size={14} color="black" />
+</Pressable>
+
                                     )}
 
                                     {index === 0 && (

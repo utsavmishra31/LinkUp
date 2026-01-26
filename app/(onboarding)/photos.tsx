@@ -1,4 +1,4 @@
-import { PhotoGrid, uploadImage } from '@/components/PhotoGrid';
+import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
 import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -8,11 +8,10 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PhotosUpload() {
-    const [photos, setPhotos] = useState<string[]>([]);
+    const [photos, setPhotos] = useState<PhotoItem[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
 
-    // Derived state or constant for "Main" label logic
+    // Derived state
     const userHasPhotos = photos.length > 0;
     const { user, refreshProfile, signOut } = useAuth();
     const router = useRouter();
@@ -27,10 +26,6 @@ export default function PhotosUpload() {
         }
     };
 
-
-
-
-
     const handleContinue = async () => {
         if (!user) return;
         if (photos.length < 1) {
@@ -38,22 +33,21 @@ export default function PhotosUpload() {
             return;
         }
 
+        // Check if any are still uploading
+        if (photos.some(p => p.status === 'uploading')) {
+            Alert.alert('Please Wait', 'Photos are still uploading...');
+            return;
+        }
+
+        // Check for errors
+        if (photos.some(p => p.status === 'error')) {
+            Alert.alert('Upload Error', 'Some photos failed to upload. Please remove or retry them.');
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
-            // Upload images sequentially
-            for (let i = 0; i < photos.length; i++) {
-                setCurrentUploadIndex(i + 1);
-                try {
-                    await uploadImage(photos[i]);
-                } catch (e) {
-                    console.error(`Error uploading photo ${i + 1}:`, e);
-                    throw e;
-                }
-            }
-
-            // All uploads success
-
             // Update onboarding step
             const { error: updateError } = await supabase
                 .from('users')
@@ -65,13 +59,13 @@ export default function PhotosUpload() {
             await refreshProfile();
             router.push('/(onboarding)/prompts');
         } catch (error: any) {
-            Alert.alert('Upload Error', error.message || 'Failed to upload one or more photos. Please try again.');
+            Alert.alert('Error', error.message || 'Failed to update profile.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const canContinue = photos.length >= 1;
+    const canContinue = photos.length >= 1 && !photos.some(p => p.status === 'uploading' || p.status === 'error');
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -85,7 +79,7 @@ export default function PhotosUpload() {
                 {/* Photo Grid */}
                 <PhotoGrid
                     photos={photos}
-                    onChange={(newPhotos) => setPhotos(newPhotos as string[])}
+                    onChange={setPhotos}
                     maxPhotos={6}
                 />
 
@@ -97,7 +91,6 @@ export default function PhotosUpload() {
                         onPress={handleContinue}
                         disabled={!canContinue}
                         isLoading={isSubmitting}
-                        loadingText={isSubmitting ? `Uploading ${currentUploadIndex}/${photos.length}` : undefined}
                     />
 
                     <Pressable
