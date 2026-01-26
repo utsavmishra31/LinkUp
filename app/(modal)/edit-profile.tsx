@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Modal,
@@ -57,6 +58,81 @@ export default function EditProfileScreen() {
     // --- Height Modal State ---
     const [isHeightModalVisible, setHeightModalVisible] = useState(false);
     const [tempHeight, setTempHeight] = useState<typeof HEIGHT_OPTIONS[0] | null>(null);
+
+    // --- Initial State for Change Detection ---
+    const [initialState, setInitialState] = useState<{
+        photos: string[]; // IDs for existing
+        firstName: string;
+        lastName: string;
+        bio: string;
+        gender: string | null;
+        interestedIn: string[];
+        height: string;
+        prompts: (PromptData | null)[];
+        availableDayIndex: number | null;
+    } | null>(null);
+
+    const hasChanges = React.useMemo(() => {
+        if (!initialState) return false;
+
+        // 1. Photos
+        const currentPhotoIds = photos.map(p => (typeof p === 'string' ? 'new' : p.id)).join(',');
+        const initialPhotoIdsStr = initialState.photos.join(',');
+        // If length differs or IDs (order) differ, or any 'new' photo exists (which implies a change)
+        // Actually, if we just check if arrays are equal.
+        // If a photo is new, it won't be in initialState.photos.
+        // Let's refine:
+        // Current state can have PhotoItem objects (existing) or strings (new).
+        // Initial state has only IDs of existing photos in order.
+
+        const currentIds = photos.map(p => {
+            if (typeof p === 'string') return `new-${p}`; // Treat new photos as unique strings
+            return p.id;
+        });
+        // This simple check might fail if we just reordered? 
+        // We need to compare the sequences.
+        // But wait, initialState.photos stores IDs.
+        // If I added a new photo, it's a change.
+        // If I removed a photo, length changes or ID missing.
+        // If I reordered, order changes.
+
+        // Let's just compare the simplified representations.
+        // For change detection, we can compare the "value" of photos.
+        // Existing photos: ID. New photos: URI.
+        const currentPhotosRep = photos.map(p => typeof p === 'string' ? p : p.id).join('|');
+        const initialPhotosRep = initialState.photos.join('|');
+        if (currentPhotosRep !== initialPhotosRep) return true;
+
+        // 2. Simple fields
+        if (firstName !== initialState.firstName) return true;
+        if (lastName !== initialState.lastName) return true; // lastName is not really used in UI but kept in state
+        if (bio !== initialState.bio) return true;
+        if (gender !== initialState.gender) return true;
+        if (height !== initialState.height) return true;
+        if (availableDayIndex !== initialState.availableDayIndex) return true;
+
+        // 3. Arrays (InterestedIn) - Sort to ignore order if that doesn't matter, 
+        // but usually UI renders in specific order. Let's assume order doesn't matter for "set" equality.
+        const sortedInterestedIn = [...interestedIn].sort().join(',');
+        const sortedInitialInterestedIn = [...initialState.interestedIn].sort().join(',');
+        if (sortedInterestedIn !== sortedInitialInterestedIn) return true;
+
+        // 4. Prompts
+        // Compare content of prompt in slot 0
+        const currentPrompt = selectedPrompts[0];
+        const initialPrompt = initialState.prompts[0];
+
+        if (!currentPrompt && !initialPrompt) {
+            // both null, no change
+        } else if ((!currentPrompt && initialPrompt) || (currentPrompt && !initialPrompt)) {
+            return true;
+        } else if (currentPrompt && initialPrompt) {
+            if (currentPrompt.question !== initialPrompt.question || currentPrompt.answer !== initialPrompt.answer) return true;
+        }
+
+        return false;
+    }, [initialState, photos, firstName, lastName, bio, gender, interestedIn, height, availableDayIndex, selectedPrompts]);
+
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -124,6 +200,24 @@ export default function EditProfileScreen() {
                         setAvailableDayIndex(index !== -1 ? index : null);
                     }
                 }
+
+                // Profile Data for Initial State - handle array or object
+                const profileDataForState = (data.profile && Array.isArray(data.profile)) ? data.profile[0] : (data.profile || {});
+
+                // Set Initial State for change detection
+                setInitialState({
+                    photos: (data.photos || []).sort((a: any, b: any) => a.position - b.position).map((p: any) => p.id),
+                    firstName: data.displayName || '',
+                    lastName: data.surname || '',
+                    bio: profileDataForState.bio || '',
+                    gender: data.gender || null,
+                    interestedIn: data.interestedIn || [],
+                    height: data.height || '',
+                    prompts: (profileDataForState.prompts && profileDataForState.prompts.length > 0) ? [profileDataForState.prompts[0]] : [null],
+                    availableDayIndex: (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true) !== -1
+                        ? (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true)
+                        : null,
+                });
 
             } catch (err) {
                 console.error('Error fetching full profile:', err);
@@ -273,7 +367,17 @@ export default function EditProfileScreen() {
                     <Ionicons name="arrow-back" size={24} color="black" />
                 </TouchableOpacity>
                 <Text className="text-lg font-bold">Edit Profile</Text>
-                <View className="w-10" />
+                <View className="w-12 items-end">
+                    {hasChanges && (
+                        <TouchableOpacity onPress={handleSaveAll} disabled={isSaving}>
+                            {isSaving ? (
+                                <ActivityIndicator size="small" color="black" />
+                            ) : (
+                                <Text className="font-bold text-[15px] text-blue-600">Save</Text>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             <KeyboardAvoidingView
@@ -417,21 +521,8 @@ export default function EditProfileScreen() {
 
                 </ScrollView>
 
-                {/* --- FOOTER --- */}
-                <View className="p-5 border-t border-gray-100 bg-white">
-                    <TouchableOpacity
-                        onPress={handleSaveAll}
-                        disabled={isSaving || firstName.trim().length === 0 || interestedIn.length === 0}
-                        className={`w-full py-4 rounded-full items-center ${isSaving || firstName.trim().length === 0 || interestedIn.length === 0 ? 'bg-gray-200' : 'bg-black'}`}
-                    >
-                        {isSaving ? (
-                            <Text className="text-gray-500 font-bold text-lg">Saving...</Text>
-                        ) : (
-                            <Text className="text-white font-bold text-lg">Save Changes</Text>
-                        )}
+                {/* --- FOOTER REMOVED --- */}
 
-                    </TouchableOpacity>
-                </View>
             </KeyboardAvoidingView>
 
             {/* --- PROMPT MODAL --- */}
