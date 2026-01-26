@@ -15,15 +15,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Use same Enum as Prisma
 const LOOKING_FOR_OPTIONS = [
-    { label: 'Relationship', value: 'RELATIONSHIP' },
-    { label: 'Casual Dates', value: 'CASUAL_DATES' },
-    { label: 'Party Partner', value: 'PARTY_PARTNER' },
-    { label: 'Friends', value: 'FRIENDS' },
-    { label: 'Hangouts', value: 'HANGOUTS' },
-    { label: 'Watch Movie', value: 'WATCH_MOVIE' },
-    { label: 'Exploring City & Cafe', value: 'EXPLORING_CITY_AND_CAFE' },
-    { label: 'Time Spending', value: 'TIME_SPENDING' },
-    { label: 'Finding Out', value: 'FINDING_OUT' },
+    { label: 'Relationship', value: 'RELATIONSHIP', emoji: '❤️' },
+    { label: 'Casual Dates', value: 'CASUAL_DATES', emoji: '🦋' },
+    { label: 'Party Partner', value: 'PARTY_PARTNER', emoji: '🎉' },
+    { label: 'Friends', value: 'FRIENDS', emoji: '👥' },
+    { label: 'Hangouts', value: 'HANGOUTS', emoji: '🐝' },
+    { label: 'Watch Movie', value: 'WATCH_MOVIE', emoji: '🎬' },
+    { label: 'Exploring City & Cafe', value: 'EXPLORING_CITY_AND_CAFE', emoji: '🗺️' },
+    { label: 'Time Spending', value: 'TIME_SPENDING', emoji: '⏰' },
+    { label: 'Therapy', value: 'THERAPY', emoji: '🧘' },
+    { label: 'Finding Out', value: 'FINDING_OUT', emoji: '🧭' },
 ] as const;
 
 type LookingForValue = typeof LOOKING_FOR_OPTIONS[number]['value'];
@@ -94,17 +95,23 @@ export default function LookingForSelection() {
                                 <TouchableOpacity
                                     key={option.value}
                                     onPress={() => toggleOption(option.value)}
-                                    className={`px-4 py-3 rounded-xl border ${isSelected
+                                    style={{ width: '48%' }}
+                                    className={`px-6 py-8 rounded-3xl border-2 ${isSelected
                                         ? 'border-black bg-gray-50'
                                         : 'border-gray-200 bg-white'
                                         }`}
                                 >
-                                    <Text
-                                        className={`text-base font-medium ${isSelected ? 'text-black' : 'text-gray-600'
-                                            }`}
-                                    >
-                                        {option.label}
-                                    </Text>
+                                    <View className="items-center gap-3">
+                                        <Text style={{ fontSize: 36 }}>
+                                            {option.emoji}
+                                        </Text>
+                                        <Text
+                                            className={`text-base font-semibold text-center ${isSelected ? 'text-black' : 'text-gray-600'
+                                                }`}
+                                        >
+                                            {option.label}
+                                        </Text>
+                                    </View>
                                 </TouchableOpacity>
                             );
                         })}
