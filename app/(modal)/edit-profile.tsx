@@ -1,5 +1,6 @@
 import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } from '@/app/(onboarding)/prompts';
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
+import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem, uploadImage } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     Text,
@@ -51,6 +53,10 @@ export default function EditProfileScreen() {
 
     // CHANGED: Use activeSlotIndex instead of editingPromptId
     const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
+
+    // --- Height Modal State ---
+    const [isHeightModalVisible, setHeightModalVisible] = useState(false);
+    const [tempHeight, setTempHeight] = useState<typeof HEIGHT_OPTIONS[0] | null>(null);
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -394,7 +400,7 @@ export default function EditProfileScreen() {
                             <Text className="text-gray-500 text-xs uppercase">Height</Text>
                         </View>
                         <TouchableOpacity
-                            onPress={() => router.push('/(onboarding)/height')}
+                            onPress={() => setHeightModalVisible(true)}
                             className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
                         >
                             <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
@@ -439,6 +445,41 @@ export default function EditProfileScreen() {
                 initialData={activeSlotIndex !== null ? selectedPrompts[activeSlotIndex] : null}
                 availablePrompts={availablePrompts}
             />
+
+            {/* --- HEIGHT MODAL --- */}
+            <Modal
+                visible={isHeightModalVisible}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setHeightModalVisible(false)}
+            >
+                <SafeAreaView className="flex-1 bg-white">
+                    <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100">
+                        <TouchableOpacity onPress={() => setHeightModalVisible(false)} className="p-2">
+                            <Text className="text-base text-gray-500">Cancel</Text>
+                        </TouchableOpacity>
+                        <Text className="text-lg font-bold">Select Height</Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (tempHeight) {
+                                    setHeight(`${tempHeight.feet} ${tempHeight.inches}`);
+                                }
+                                setHeightModalVisible(false);
+                            }}
+                            className="p-2"
+                        >
+                            <Text className="text-base font-semibold text-black">Done</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View className="flex-1 justify-center">
+                        <HeightPicker
+                            initialHeight={height}
+                            onHeightChange={setTempHeight}
+                        />
+                    </View>
+                </SafeAreaView>
+            </Modal>
 
         </SafeAreaView>
     );
