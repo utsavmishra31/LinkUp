@@ -395,6 +395,15 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                     )}
 
 
+                                    {/* Uploading Overlay */}
+                                    {photo.status === 'uploading' && (
+                                        <View className="absolute inset-0 bg-black/50 items-center justify-center z-20">
+                                            <Text className="text-white font-semibold text-xs mb-1">Uploading</Text>
+                                            {photo.uploadProgress !== undefined && photo.uploadProgress > 0 && (
+                                                <Text className="text-white text-[10px] font-medium">{photo.uploadProgress}%</Text>
+                                            )}
+                                        </View>
+                                    )}
                                 </>
                             ) : (
                                 <View className="flex-1 items-center justify-center">

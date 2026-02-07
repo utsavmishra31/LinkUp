@@ -1,4 +1,3 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
@@ -12,6 +11,8 @@ interface ArrowButtonProps {
 
 export const ArrowButton = ({ onPress, disabled = false, isLoading = false, loadingText }: ArrowButtonProps) => {
     const isInteractable = !disabled && !isLoading;
+
+    // Show text only if loading
     const showText = isLoading && loadingText;
 
     return (
@@ -32,11 +33,13 @@ export const ArrowButton = ({ onPress, disabled = false, isLoading = false, load
                         <Ionicons name="ellipsis-horizontal" size={24} color="black" />
                     </View>
                 ) : (
-                    <Ionicons
-                        name="chevron-forward"
-                        size={36}
-                        color={isInteractable ? 'white' : '#9ca3af'}
-                    />
+                    <View>
+                        <Ionicons
+                            name="chevron-forward"
+                            size={36}
+                            color={isInteractable ? 'white' : '#9ca3af'}
+                        />
+                    </View>
                 )}
             </TouchableOpacity>
         </View>

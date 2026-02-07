@@ -306,8 +306,7 @@ export default function PromptsScreen() {
         const validPrompts = selectedPrompts.filter((p): p is PromptData => p !== null);
 
         if (validPrompts.length < 1) {
-            Alert.alert('Required', 'Please add a prompt.');
-            return;
+            // Optional now
         }
 
         if (!bio.trim()) {
@@ -346,7 +345,7 @@ export default function PromptsScreen() {
 
     // Validation
     const filledCount = selectedPrompts.filter(p => p !== null).length;
-    const canContinue = filledCount >= 1 && bio.trim().length > 0;
+    const canContinue = bio.trim().length > 0;
 
     // Filter out prompts that are already selected in OTHER slots
     const availablePrompts = PREDEFINED_PROMPTS.filter(p => {

@@ -166,6 +166,12 @@ export default function EditProfileScreen() {
         setActiveSlotIndex(null);
     };
 
+    const handleClearPrompt = (index: number) => {
+        const newPrompts = [...selectedPrompts];
+        newPrompts[index] = null;
+        setSelectedPrompts(newPrompts);
+    };
+
     const availablePrompts = PREDEFINED_PROMPTS.filter(p => {
         const isUsed = selectedPrompts.some(sp => sp?.question === p);
         const currentQuestion = activeSlotIndex !== null ? selectedPrompts[activeSlotIndex]?.question : null;
@@ -325,7 +331,11 @@ export default function EditProfileScreen() {
                         <View className="mb-8">
                             <Text className="text-lg font-bold mb-3">Prompts</Text>
                             <View className="gap-y-3">
-                                <PromptSlot data={selectedPrompts[0]} onPress={() => handleSlotPress(0)} showEditIcon={true} />
+                                <PromptSlot
+                                    data={selectedPrompts[0]}
+                                    onPress={() => handleSlotPress(0)}
+                                    onClear={selectedPrompts[0] ? () => handleClearPrompt(0) : undefined}
+                                />
                             </View>
                         </View>
 
