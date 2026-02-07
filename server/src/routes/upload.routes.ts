@@ -256,5 +256,71 @@ router.delete('/:id', authenticateUser, async (req, res) => {
     }
 });
 
+// Reorder photos route
+router.patch('/reorder', authenticateUser, async (req, res) => {
+    try {
+
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const userId = req.user.id;
+        const { photos } = req.body as { photos: { id: string; position: number }[] };
+
+
+        if (!photos || !Array.isArray(photos)) {
+            return res.status(400).json({ error: 'Invalid request: photos array required' });
+        }
+
+        // Validate all photos belong to the user
+        const photoIds = photos.map(p => p.id);
+        const existingPhotos = await prisma.photo.findMany({
+            where: {
+                id: { in: photoIds },
+                userId,
+            },
+        });
+
+
+        if (existingPhotos.length !== photoIds.length) {
+            return res.status(403).json({ error: 'Some photos do not belong to this user' });
+        }
+
+        // Update positions in a transaction
+        // To avoid unique constraint violations, use an offset approach:
+        // Add 1000 to all positions first, then set to final positions
+        const OFFSET = 1000;
+
+        await prisma.$transaction([
+            // Step 1: Add offset to all positions to avoid conflicts
+            ...photos.map(({ id }, index) =>
+                prisma.photo.update({
+                    where: { id },
+                    data: { position: OFFSET + index },
+                })
+            ),
+            // Step 2: Set to final positions
+            ...photos.map(({ id, position }) =>
+                prisma.photo.update({
+                    where: { id },
+                    data: {
+                        position,
+                        isPrimary: position === 0,
+                    },
+                })
+            ),
+        ]);
+
+        res.json({ success: true, message: 'Photos reordered successfully' });
+
+    } catch (error: any) {
+        console.error('[REORDER] Error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Reorder failed',
+        });
+    }
+});
+
 export default router;
 

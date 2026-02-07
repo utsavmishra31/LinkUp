@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { API_URL } from '@/lib/api/client';
 import { supabase } from '@/lib/supabase';
 import ImageCropper from './ImageCropper';
 
+import Sortable from 'react-native-sortables';
 
 export type PhotoItem = {
     id?: string;              // DB id (existing photos)
@@ -17,8 +18,13 @@ export type PhotoItem = {
     status: 'uploading' | 'uploaded' | 'error';
     uploadProgress?: number;
     replaceOfId?: string; // ✅ ADD THIS
-
+    key?: string;
+    isPlaceholder?: boolean;
 };
+
+// ... (rest of file)
+
+
 
 const generateFileName = (uri: string) => {
     const ext = uri.split('.').pop() || 'jpg';
@@ -112,6 +118,24 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
     const [cropQueue, setCropQueue] = useState<string[]>([]);
     // Track if we're in edit mode: { index: photo position, photoId: old photo ID to delete }
     const [editMode, setEditMode] = useState<{ index: number; photoId?: string } | null>(null);
+
+    // Memoize the data array to prevent recreation on every render
+    const gridData = useMemo(() => {
+        return [...Array(maxPhotos)].map((_, index) => {
+            if (index < photos.length) {
+                return { ...photos[index], key: photos[index].id || photos[index].localUri || `photo-${index}` };
+            }
+            return { id: `empty-${index}`, isPlaceholder: true, key: `empty-${index}`, status: 'uploaded' as const };
+        });
+    }, [photos, maxPhotos]);
+
+    // Memoize the onDragEnd callback
+    const handleDragEnd = useCallback(({ data }: { data: PhotoItem[] }) => {
+        const newOrder = data
+            .filter((item) => !item.isPlaceholder)
+            .map(({ key, isPlaceholder, ...rest }) => rest);
+        onChange(newOrder);
+    }, [onChange]);
 
     // We'll use a local helper to handle the actual upload process
     // so it can be reused by both "add new" (crop) and "edit existing" (picker)
@@ -330,14 +354,26 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
 
     return (
         <>
-            <View className="flex-row flex-wrap justify-between gap-y-4">
-                {[...Array(maxPhotos)].map((_, index) => {
-                    const photo = photos[index];
+            <Sortable.Grid
+                data={gridData}
+                keyExtractor={(item: PhotoItem) => item.key!}
+                columns={3}
+                columnGap={10}
+                rowGap={10}
+                onDragEnd={handleDragEnd}
+                renderItem={({ item, index }: { item: PhotoItem; index: number }) => {
+                    const photo = item.isPlaceholder ? null : (item as PhotoItem);
+
                     return (
                         <Pressable
-                            key={index}
+                            key={item.key}
                             onPress={() => !photo && pickImage()}
-                            className={`w-[31%] aspect-[3/4] rounded-xl overflow-hidden relative ${photo ? 'bg-gray-100' : 'bg-gray-50 border-2 border-dashed border-gray-300'
+                            delayLongPress={200}
+                            style={{
+                                width: '100%',
+                                aspectRatio: 3 / 4,
+                            }}
+                            className={`rounded-xl overflow-hidden relative ${photo ? 'bg-gray-100' : 'bg-gray-50 border-2 border-dashed border-gray-300'
                                 }`}
                         >
                             {photo ? (
@@ -385,7 +421,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                         >
                                             <Ionicons name="close" size={14} color="black" />
                                         </Pressable>
-
                                     )}
 
                                     {index === 0 && (
@@ -412,8 +447,8 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                             )}
                         </Pressable>
                     );
-                })}
-            </View>
+                }}
+            />
 
             <ImageCropper
                 visible={!!activeCropImage}

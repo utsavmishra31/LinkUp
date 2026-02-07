@@ -12,6 +12,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -27,15 +28,17 @@ GoogleSignin.configure({
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <AuthWrapper>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(modal)" options={{ presentation: 'modal' }} />        </Stack>
-
-        <StatusBar style="auto" />
-      </AuthWrapper>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AuthWrapper>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(modal)" options={{ presentation: 'modal' }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </AuthWrapper>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

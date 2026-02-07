@@ -2,10 +2,11 @@ import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } fro
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
+import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -147,6 +148,96 @@ export default function EditProfileScreen() {
         };
         loadProfileData();
     }, [user]);
+
+    // Reload photos when screen comes into focus to show updated order
+    useFocusEffect(
+        React.useCallback(() => {
+            const reloadPhotos = async () => {
+                if (!user) return;
+                try {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('photos(*)')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (error) throw error;
+                    if (data?.photos) {
+                        const sortedPhotos = [...data.photos].sort((a: any, b: any) => a.position - b.position);
+                        setPhotos(sortedPhotos);
+                        setInitialState(prev => prev ? {
+                            ...prev,
+                            photos: sortedPhotos.map((p: any) => p.id)
+                        } : null);
+                    }
+                } catch (err) {
+                    console.error('Error reloading photos:', err);
+                }
+            };
+            reloadPhotos();
+        }, [user])
+    );
+
+    // Auto-save photo order when it changes
+    useEffect(() => {
+        const savePhotoOrder = async () => {
+            if (!initialState || !user) return;
+
+            // Only save if photos are fully loaded and not uploading
+            if (photos.some(p => p.status === 'uploading')) return;
+
+            const currentPhotoIds = photos.filter(p => p.id).map(p => p.id).join(',');
+            const initialPhotoIds = initialState.photos.join(',');
+
+            // Only save if order has actually changed
+            if (currentPhotoIds !== initialPhotoIds && photos.length > 0) {
+                const photoUpdates = photos
+                    .filter(p => p.id)
+                    .map((photo, index) => ({
+                        id: photo.id!,
+                        position: index,
+                    }));
+
+                if (photoUpdates.length > 0) {
+                    try {
+                        const session = await supabase.auth.getSession();
+                        const token = session.data.session?.access_token;
+
+                        if (token) {
+                            const response = await fetch(`${API_URL}/upload/reorder`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`,
+                                },
+                                body: JSON.stringify({ photos: photoUpdates }),
+                            });
+
+                            if (response.ok) {
+                                // Check if main photo changed
+                                const mainPhotoChanged = initialState.photos[0] !== photos[0]?.id;
+
+                                // Update initialState to reflect the new order
+                                setInitialState(prev => prev ? {
+                                    ...prev,
+                                    photos: photos.filter(p => p.id).map(p => p.id!)
+                                } : null);
+
+                                // Only refresh profile if main photo changed (non-blocking)
+                                if (mainPhotoChanged) {
+                                    refreshProfile();
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        // Silently fail - photo order will be saved on next successful reorder
+                    }
+                }
+            }
+        };
+
+        savePhotoOrder();
+    }, [photos, initialState, user]);
 
     const handleSlotPress = (index: number) => {
         setActiveSlotIndex(index);
