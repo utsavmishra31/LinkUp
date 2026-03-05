@@ -2,6 +2,7 @@ import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } fro
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
+import { ProfilePreview } from '@/components/ProfilePreview';
 import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +39,8 @@ export default function EditProfileScreen() {
     const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | null>(null);
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const [height, setHeight] = useState('');
+    const [dob, setDob] = useState<string | null>(null);
+    const [isPreviewVisible, setIsPreviewVisible] = useState(false);
 
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
     const [availableDayIndex, setAvailableDayIndex] = useState<number | null>(null);
@@ -109,6 +112,7 @@ export default function EditProfileScreen() {
                 if (data.gender) setGender(data.gender);
                 if (data.interestedIn && Array.isArray(data.interestedIn)) setInterestedIn(data.interestedIn);
                 if (data.height) setHeight(data.height);
+                if (data.dob) setDob(data.dob);
 
                 if (data.profile) {
                     const profileData = data.profile as any;
@@ -238,6 +242,29 @@ export default function EditProfileScreen() {
 
         savePhotoOrder();
     }, [photos, initialState, user]);
+
+    const calculateAge = (dobString: string | null) => {
+        if (!dobString) return undefined;
+        const birthDate = new Date(dobString);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
+    const getPreviewProfile = () => ({
+        photos: photos.map(p => ({ uri: p.localUri || (p.imageUrl?.startsWith('http') ? p.imageUrl : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${p.imageUrl}`) })),
+        displayName: firstName,
+        age: calculateAge(dob),
+        bio: bio,
+        gender: gender || undefined,
+        height: height || undefined,
+        interestedIn: interestedIn,
+        prompts: selectedPrompts,
+    });
 
     const handleSlotPress = (index: number) => {
         setActiveSlotIndex(index);
@@ -381,22 +408,31 @@ export default function EditProfileScreen() {
                     <TouchableOpacity onPress={handleBack} disabled={isUploading} className="p-2">
                         <Ionicons name="arrow-back" size={24} color={isUploading ? "gray" : "black"} />
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold">Edit Profile</Text>
-                    <View className="w-12 items-end">
-                        {hasChanges && (
-                            <TouchableOpacity
-                                onPress={handleSaveAll}
-                                disabled={isSaving || isUploading}
-                            >
-                                {isSaving ? (
-                                    <ActivityIndicator size="small" color="black" />
-                                ) : (
-                                    <Text className={`font-bold text-[15px] ${isUploading ? 'text-gray-400' : 'text-blue-600'}`}>
-                                        Save
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                        )}
+                    <View className="flex-row items-center gap-12">
+                        <Text className="text-lg font-bold">Edit Profile</Text>
+                        <Text className="text-2xl font-bold text-gray-300">|</Text>
+                        <TouchableOpacity onPress={() => setIsPreviewVisible(true)} disabled={isUploading}>
+                            <Text className="text-lg font-bold text-black">Preview</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View className="flex-row items-center gap-4">
+
+                        <View className="w-12 items-end">
+                            {hasChanges && (
+                                <TouchableOpacity
+                                    onPress={handleSaveAll}
+                                    disabled={isSaving || isUploading}
+                                >
+                                    {isSaving ? (
+                                        <ActivityIndicator size="small" color="black" />
+                                    ) : (
+                                        <Text className={`font-bold text-[15px] ${isUploading ? 'text-gray-400' : 'text-blue-600'}`}>
+                                            Save
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 </View>
 
@@ -527,6 +563,12 @@ export default function EditProfileScreen() {
                     </View>
                 </SafeAreaView>
             </Modal>
+
+            <ProfilePreview
+                visible={isPreviewVisible}
+                onClose={() => setIsPreviewVisible(false)}
+                profile={getPreviewProfile()}
+            />
         </View>
     );
 }

@@ -361,15 +361,19 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                 columnGap={10}
                 rowGap={10}
                 onDragEnd={handleDragEnd}
+                customHandle
                 renderItem={({ item, index }: { item: PhotoItem; index: number }) => {
                     const photo = item.isPlaceholder ? null : (item as PhotoItem);
 
-                    return (
+                    const content = (
                         <Pressable
                             key={item.key}
                             onPress={() => !photo && pickImage()}
                             delayLongPress={200}
-                            style={{
+                            style={photo ? {
+                                width: '100%',
+                                height: '100%',
+                            } : {
                                 width: '100%',
                                 aspectRatio: 3 / 4,
                             }}
@@ -447,6 +451,21 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                             )}
                         </Pressable>
                     );
+
+                    if (photo) {
+                        return (
+                            <Sortable.Handle
+                                style={{
+                                    width: '100%',
+                                    aspectRatio: 3 / 4,
+                                }}
+                            >
+                                {content}
+                            </Sortable.Handle>
+                        )
+                    }
+
+                    return content;
                 }}
             />
 
