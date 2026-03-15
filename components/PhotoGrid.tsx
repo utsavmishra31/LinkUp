@@ -361,6 +361,7 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                 columnGap={10}
                 rowGap={10}
                 onDragEnd={handleDragEnd}
+                dragActivationDelay={0}
                 customHandle
                 renderItem={({ item, index }: { item: PhotoItem; index: number }) => {
                     const photo = item.isPlaceholder ? null : (item as PhotoItem);
@@ -369,7 +370,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                         <Pressable
                             key={item.key}
                             onPress={() => !photo && pickImage()}
-                            delayLongPress={200}
                             style={photo ? {
                                 width: '100%',
                                 height: '100%',
