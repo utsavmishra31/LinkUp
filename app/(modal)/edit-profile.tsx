@@ -2,7 +2,7 @@ import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } fro
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
-import { ProfilePreview } from '@/components/ProfilePreview';
+import { ProfilePreviewContent } from '@/components/ProfilePreviewContent';
 import { API_URL } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +28,7 @@ export default function EditProfileScreen() {
     const { user, refreshProfile } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
     // --- Form State ---
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -40,7 +41,6 @@ export default function EditProfileScreen() {
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const [height, setHeight] = useState('');
     const [dob, setDob] = useState<string | null>(null);
-    const [isPreviewVisible, setIsPreviewVisible] = useState(false);
 
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
     const [availableDayIndex, setAvailableDayIndex] = useState<number | null>(null);
@@ -409,16 +409,18 @@ export default function EditProfileScreen() {
                         <Ionicons name="arrow-back" size={24} color={isUploading ? "gray" : "black"} />
                     </TouchableOpacity>
                     <View className="flex-row items-center gap-12">
-                        <Text className="text-lg font-bold">Edit Profile</Text>
+                        <TouchableOpacity onPress={() => setActiveTab('edit')}>
+                            <Text className={`text-lg font-bold ${activeTab === 'edit' ? 'text-black' : 'text-gray-400'}`}>Edit Profile</Text>
+                        </TouchableOpacity>
                         <Text className="text-2xl font-bold text-gray-300">|</Text>
-                        <TouchableOpacity onPress={() => setIsPreviewVisible(true)} disabled={isUploading}>
-                            <Text className="text-lg font-bold text-black">Preview</Text>
+                        <TouchableOpacity onPress={() => setActiveTab('preview')}>
+                            <Text className={`text-lg font-bold ${activeTab === 'preview' ? 'text-black' : 'text-gray-400'}`}>Preview</Text>
                         </TouchableOpacity>
                     </View>
                     <View className="flex-row items-center gap-4">
 
                         <View className="w-12 items-end">
-                            {hasChanges && (
+                            {hasChanges && activeTab === 'edit' && (
                                 <TouchableOpacity
                                     onPress={handleSaveAll}
                                     disabled={isSaving || isUploading}
@@ -436,109 +438,113 @@ export default function EditProfileScreen() {
                     </View>
                 </View>
 
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    className="flex-1"
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-                >
-                    <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                        <Text className="text-lg font-bold mb-3">Photos</Text>
-                        <View className="mb-8">
-                            <PhotoGrid photos={photos} onChange={setPhotos} maxPhotos={6} />
-                        </View>
+                {activeTab === 'edit' ? (
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        className="flex-1"
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                    >
+                        <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                            <Text className="text-lg font-bold mb-3">Photos</Text>
+                            <View className="mb-8">
+                                <PhotoGrid photos={photos} onChange={setPhotos} maxPhotos={6} />
+                            </View>
 
-                        <View className="mb-8">
-                            <Text className="text-lg font-bold mb-3">Availability</Text>
-                            <Text className="text-gray-500 text-sm mb-4">Select the day you are available.</Text>
-                            <AvailabilityPicker selectedDayIndex={availableDayIndex} onSelectDay={handleSelectDay} />
-                        </View>
+                            <View className="mb-8">
+                                <Text className="text-lg font-bold mb-3">Availability</Text>
+                                <Text className="text-gray-500 text-sm mb-4">Select the day you are available.</Text>
+                                <AvailabilityPicker selectedDayIndex={availableDayIndex} onSelectDay={handleSelectDay} />
+                            </View>
 
-                        <BioInput value={bio} onChangeText={setBio} placeholder="" />
+                            <BioInput value={bio} onChangeText={setBio} placeholder="" />
 
-                        <View className="mb-8">
-                            <Text className="text-lg font-bold mb-3">Prompts</Text>
-                            <View className="gap-y-3">
-                                <PromptSlot
-                                    data={selectedPrompts[0]}
-                                    onPress={() => handleSlotPress(0)}
-                                    onClear={selectedPrompts[0] ? () => handleClearPrompt(0) : undefined}
+                            <View className="mb-8">
+                                <Text className="text-lg font-bold mb-3">Prompts</Text>
+                                <View className="gap-y-3">
+                                    <PromptSlot
+                                        data={selectedPrompts[0]}
+                                        onPress={() => handleSlotPress(0)}
+                                        onClear={selectedPrompts[0] ? () => handleClearPrompt(0) : undefined}
+                                    />
+                                </View>
+                            </View>
+
+                            <Text className="text-lg font-bold mb-3">About You</Text>
+                            <View className="mb-4">
+                                <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
+                                <TextInput
+                                    value={firstName}
+                                    onChangeText={setFirstName}
+                                    className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
+                                    placeholder="Name"
                                 />
                             </View>
-                        </View>
 
-                        <Text className="text-lg font-bold mb-3">About You</Text>
-                        <View className="mb-4">
-                            <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
-                            <TextInput
-                                value={firstName}
-                                onChangeText={setFirstName}
-                                className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
-                                placeholder="Name"
-                            />
-                        </View>
-
-                        <View className="mb-4">
-                            <View className="flex-row items-center mb-2">
-                                <Ionicons name="person-outline" size={16} color="gray" style={{ marginRight: 4 }} />
-                                <Text className="text-gray-500 text-xs uppercase">Gender</Text>
-                            </View>
-                            <View className="flex-row gap-3">
-                                {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
-                                    <TouchableOpacity
-                                        key={option}
-                                        onPress={() => setGender(option)}
-                                        className={`flex-1 py-3 items-center rounded-xl border ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
-                                    >
-                                        <Text className={`font-medium ${gender === option ? 'text-white' : 'text-black'}`}>
-                                            {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
-                        <View className="mb-4">
-                            <View className="flex-row items-center mb-2">
-                                <Ionicons name="heart-outline" size={16} color="gray" style={{ marginRight: 4 }} />
-                                <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
-                            </View>
-                            <View className="flex-row gap-3">
-                                {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
-                                    const isSelected = interestedIn.includes(option);
-                                    return (
+                            <View className="mb-4">
+                                <View className="flex-row items-center mb-2">
+                                    <Ionicons name="person-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                    <Text className="text-gray-500 text-xs uppercase">Gender</Text>
+                                </View>
+                                <View className="flex-row gap-3">
+                                    {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
                                         <TouchableOpacity
                                             key={option}
-                                            onPress={() => {
-                                                setInterestedIn(prev => prev.includes(option) ? prev.filter(p => p !== option) : [...prev, option]);
-                                            }}
-                                            className={`flex-1 py-3 items-center rounded-xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
+                                            onPress={() => setGender(option)}
+                                            className={`flex-1 py-3 items-center rounded-xl border ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
                                         >
-                                            <Text className={`font-medium ${isSelected ? 'text-white' : 'text-black'}`}>
-                                                {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
+                                            <Text className={`font-medium ${gender === option ? 'text-white' : 'text-black'}`}>
+                                                {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
                                             </Text>
                                         </TouchableOpacity>
-                                    );
-                                })}
+                                    ))}
+                                </View>
                             </View>
-                        </View>
 
-                        <View className="mb-4">
-                            <View className="flex-row items-center mb-2">
-                                <Ionicons name="resize-outline" size={16} color="gray" style={{ marginRight: 4 }} />
-                                <Text className="text-gray-500 text-xs uppercase">Height</Text>
+                            <View className="mb-4">
+                                <View className="flex-row items-center mb-2">
+                                    <Ionicons name="heart-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                    <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
+                                </View>
+                                <View className="flex-row gap-3">
+                                    {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
+                                        const isSelected = interestedIn.includes(option);
+                                        return (
+                                            <TouchableOpacity
+                                                key={option}
+                                                onPress={() => {
+                                                    setInterestedIn(prev => prev.includes(option) ? prev.filter(p => p !== option) : [...prev, option]);
+                                                }}
+                                                className={`flex-1 py-3 items-center rounded-xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
+                                            >
+                                                <Text className={`font-medium ${isSelected ? 'text-white' : 'text-black'}`}>
+                                                    {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
                             </View>
-                            <TouchableOpacity
-                                onPress={() => setHeightModalVisible(true)}
-                                className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
-                            >
-                                <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
-                                    {height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : 'Select height'}
-                                </Text>
-                                <Ionicons name="chevron-forward" size={20} color="gray" />
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
-                </KeyboardAvoidingView>
+
+                            <View className="mb-4">
+                                <View className="flex-row items-center mb-2">
+                                    <Ionicons name="resize-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                    <Text className="text-gray-500 text-xs uppercase">Height</Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={() => setHeightModalVisible(true)}
+                                    className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
+                                >
+                                    <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
+                                        {height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : 'Select height'}
+                                    </Text>
+                                    <Ionicons name="chevron-forward" size={20} color="gray" />
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+                ) : (
+                    <ProfilePreviewContent profile={getPreviewProfile()} />
+                )}
             </SafeAreaView>
 
             <PromptModal
@@ -563,12 +569,6 @@ export default function EditProfileScreen() {
                     </View>
                 </SafeAreaView>
             </Modal>
-
-            <ProfilePreview
-                visible={isPreviewVisible}
-                onClose={() => setIsPreviewVisible(false)}
-                profile={getPreviewProfile()}
-            />
         </View>
     );
 }
