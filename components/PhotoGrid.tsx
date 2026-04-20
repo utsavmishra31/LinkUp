@@ -366,106 +366,105 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                 renderItem={({ item, index }: { item: PhotoItem; index: number }) => {
                     const photo = item.isPlaceholder ? null : (item as PhotoItem);
 
-                    const content = (
-                        <Pressable
-                            key={item.key}
-                            onPress={() => !photo && pickImage()}
-                            style={photo ? {
-                                width: '100%',
-                                height: '100%',
-                            } : {
-                                width: '100%',
-                                aspectRatio: 3 / 4,
-                            }}
-                            className={`rounded-xl overflow-hidden relative ${photo ? 'bg-gray-100' : 'bg-gray-50 border-2 border-dashed border-gray-300'
-                                }`}
-                        >
-                            {photo ? (
-                                <>
-                                    <Image
-                                        source={{ uri: getPhotoUri(photo) }}
-                                        className="w-full h-full"
-                                        contentFit="cover"
-                                        transition={200}
-                                    />
-                                    {/* Edit Button or Remove Button */}
-                                    {photos.length <= 1 ? (
-                                        <Pressable
-                                            onPress={() => editPhoto(index)}
-                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
-                                            hitSlop={10}
-                                        >
-                                            <Ionicons name="pencil" size={14} color="black" />
-                                        </Pressable>
-                                    ) : (
-                                        <Pressable
-                                            onPress={() => {
-                                                Alert.alert(
-                                                    '',
-                                                    '',
-                                                    [
-                                                        {
-                                                            text: 'Replace',
-                                                            onPress: () => editPhoto(index),
-                                                        },
-                                                        {
-                                                            text: 'Delete',
-                                                            style: 'destructive',
-                                                            onPress: () => removePhoto(index),
-                                                        },
-                                                        {
-                                                            text: 'Cancel',
-                                                            style: 'cancel',
-                                                        },
-                                                    ]
-                                                );
-                                            }}
-                                            className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
-                                            hitSlop={10}
-                                        >
-                                            <Ionicons name="close" size={14} color="black" />
-                                        </Pressable>
-                                    )}
-
-                                    {index === 0 && (
-                                        <View className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md">
-                                            <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
-                                        </View>
-                                    )}
-
-
-                                    {/* Uploading Overlay */}
-                                    {photo.status === 'uploading' && (
-                                        <View className="absolute inset-0 bg-black/50 items-center justify-center z-20">
-                                            <Text className="text-white font-semibold text-xs mb-1">Uploading</Text>
-                                            {photo.uploadProgress !== undefined && photo.uploadProgress > 0 && (
-                                                <Text className="text-white text-[10px] font-medium">{photo.uploadProgress}%</Text>
-                                            )}
-                                        </View>
-                                    )}
-                                </>
-                            ) : (
-                                <View className="flex-1 items-center justify-center">
-                                    <Ionicons name="add" size={24} color="#9ca3af" />
-                                </View>
-                            )}
-                        </Pressable>
-                    );
-
                     if (photo) {
                         return (
-                            <Sortable.Handle
+                            <View
+                                key={item.key}
                                 style={{
                                     width: '100%',
                                     aspectRatio: 3 / 4,
                                 }}
+                                className="rounded-xl overflow-hidden relative bg-gray-100"
                             >
-                                {content}
-                            </Sortable.Handle>
-                        )
+                                {/* DRAG HANDLE: The image itself is the handle */}
+                                <Sortable.Handle
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                    }}
+                                >
+                                    <View className="w-full h-full">
+                                        <Image
+                                            source={{ uri: getPhotoUri(photo) }}
+                                            className="w-full h-full"
+                                            contentFit="cover"
+                                            transition={200}
+                                        />
+                                    </View>
+                                </Sortable.Handle>
+
+                                {/* ACTION BUTTON: Outside Sortable.Handle to stay clickable */}
+                                {photos.length <= 1 ? (
+                                    <Pressable
+                                        onPress={() => editPhoto(index)}
+                                        className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
+                                        hitSlop={10}
+                                    >
+                                        <Ionicons name="pencil" size={14} color="black" />
+                                    </Pressable>
+                                ) : (
+                                    <Pressable
+                                        onPress={() => {
+                                            Alert.alert(
+                                                '',
+                                                '',
+                                                [
+                                                    {
+                                                        text: 'Replace',
+                                                        onPress: () => editPhoto(index),
+                                                    },
+                                                    {
+                                                        text: 'Delete',
+                                                        style: 'destructive',
+                                                        onPress: () => removePhoto(index),
+                                                    },
+                                                    {
+                                                        text: 'Cancel',
+                                                        style: 'cancel',
+                                                    },
+                                                ]
+                                            );
+                                        }}
+                                        className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
+                                        hitSlop={10}
+                                    >
+                                        <Ionicons name="close" size={14} color="black" />
+                                    </Pressable>
+                                )}
+
+                                {index === 0 && (
+                                    <View className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md">
+                                        <Text className="text-[10px] font-bold uppercase text-black">Main</Text>
+                                    </View>
+                                )}
+
+                                {/* Uploading Overlay */}
+                                {photo.status === 'uploading' && (
+                                    <View className="absolute inset-0 bg-black/50 items-center justify-center z-20">
+                                        <Text className="text-white font-semibold text-xs mb-1">Uploading</Text>
+                                        {photo.uploadProgress !== undefined && photo.uploadProgress > 0 && (
+                                            <Text className="text-white text-[10px] font-medium">{photo.uploadProgress}%</Text>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+                        );
                     }
 
-                    return content;
+                    // Placeholder slot
+                    return (
+                        <Pressable
+                            key={item.key}
+                            onPress={() => pickImage()}
+                            style={{
+                                width: '100%',
+                                aspectRatio: 3 / 4,
+                            }}
+                            className="rounded-xl overflow-hidden relative bg-gray-50 border-2 border-dashed border-gray-300 items-center justify-center"
+                        >
+                            <Ionicons name="add" size={24} color="#9ca3af" />
+                        </Pressable>
+                    );
                 }}
             />
 
