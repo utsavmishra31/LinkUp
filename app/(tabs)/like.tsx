@@ -2,6 +2,7 @@ import { ProfilePreviewContent, ProfilePreviewData } from '@/components/ProfileP
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -27,6 +28,50 @@ export default function LikeScreen() {
     const [likers, setLikers] = useState<ProfilePreviewData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProfile, setSelectedProfile] = useState<ProfilePreviewData | null>(null);
+    const [matchedUser, setMatchedUser] = useState<ProfilePreviewData | null>(null);
+
+    const handleMatch = async (likedId: string) => {
+        if (!user) return;
+        // Optimistic UI
+        const matched = likers.find(l => l.id === likedId);
+        setLikers(prev => prev.filter(p => p.id !== likedId));
+        setSelectedProfile(null);
+        try {
+            // Create a match (use sorted IDs to ensure uniqueness)
+            const matchId = Crypto.randomUUID();
+            const [u1, u2] = [user.id, likedId].sort();
+            const { data: matchData, error: matchError } = await supabase
+                .from('matches')
+                .insert([{ id: matchId, user1Id: u1, user2Id: u2 }])
+                .select()
+                .single();
+
+            if (matchData) {
+                // Create chat unconditionally if match created successfully
+                const chatId = Crypto.randomUUID();
+                await supabase.from('chats').insert([{ id: chatId, matchId: matchData.id }]);
+            }
+
+            if (matchError && matchError.code !== '23505') {
+                // 23505 = unique violation, match already exists
+                console.error('Error creating match:', matchError);
+            }
+
+            // Delete the original like from likes table
+            await supabase
+                .from('likes')
+                .delete()
+                .eq('liker_id', likedId)
+                .eq('liked_id', user.id);
+
+            // Show match celebration
+            if (matched) {
+                setMatchedUser(matched);
+            }
+        } catch (error) {
+            console.error('Error in handleMatch:', error);
+        }
+    };
 
     const handleReject = async (rejectedId: string) => {
         if (!user) return;
@@ -263,7 +308,67 @@ export default function LikeScreen() {
                             profile={selectedProfile}
                             onClose={() => setSelectedProfile(null)}
                             onDislike={handleReject}
+                            onLike={handleMatch}
                         />
+                    </View>
+                )}
+            </Modal>
+
+            {/* Match Celebration Modal */}
+            <Modal
+                visible={!!matchedUser}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setMatchedUser(null)}
+            >
+                {matchedUser && (
+                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                        <Text style={{ fontSize: 48, fontWeight: '900', color: '#10B981', fontStyle: 'italic', marginBottom: 40, textAlign: 'center' }}>
+                            IT'S A MATCH!
+                        </Text>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 60 }}>
+                            {/* Current User (Placeholder for now, or fetch own photo) */}
+                            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#374151', borderWidth: 4, borderColor: '#10B981', zIndex: 2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                <Ionicons name="person" size={50} color="#9ca3af" />
+                            </View>
+                            
+                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', zIndex: 3, marginHorizontal: -20 }}>
+                                <Ionicons name="heart" size={24} color="white" />
+                            </View>
+                            
+                            {/* Matched User */}
+                            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#374151', borderWidth: 4, borderColor: '#10B981', zIndex: 1, overflow: 'hidden' }}>
+                                {matchedUser.photos[0]?.uri ? (
+                                    <Image source={{ uri: matchedUser.photos[0].uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                                ) : (
+                                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                        <Ionicons name="person" size={50} color="#9ca3af" />
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+
+                        <Text style={{ color: 'white', fontSize: 18, textAlign: 'center', marginBottom: 40 }}>
+                            You and {matchedUser.displayName} liked each other.
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setMatchedUser(null);
+                                router.push('/(tabs)/messages');
+                            }}
+                            style={{ backgroundColor: '#10B981', width: '100%', paddingVertical: 16, borderRadius: 999, alignItems: 'center', marginBottom: 16 }}
+                        >
+                            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Send a Message</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setMatchedUser(null)}
+                            style={{ backgroundColor: 'transparent', width: '100%', paddingVertical: 16, borderRadius: 999, alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' }}
+                        >
+                            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Keep Swiping</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
             </Modal>
