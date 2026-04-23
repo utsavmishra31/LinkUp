@@ -49,7 +49,18 @@ export default function LikeScreen() {
             if (matchData) {
                 // Create chat unconditionally if match created successfully
                 const chatId = Crypto.randomUUID();
-                await supabase.from('chats').insert([{ id: chatId, matchId: matchData.id }]);
+                const { error: chatError } = await supabase
+                    .from('chats')
+                    .insert([{ id: chatId, matchId: matchData.id }]);
+
+                if (!chatError) {
+                    // Add both users as chat participants (industry standard —
+                    // receiver is identified by looking at ChatParticipant, not a receiverId on messages)
+                    await supabase.from('chat_participants').insert([
+                        { id: Crypto.randomUUID(), chatId, userId: u1 },
+                        { id: Crypto.randomUUID(), chatId, userId: u2 },
+                    ]);
+                }
             }
 
             if (matchError && matchError.code !== '23505') {

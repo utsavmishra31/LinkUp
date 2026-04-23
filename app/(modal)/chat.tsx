@@ -3,17 +3,25 @@ import { disconnectSocket, getSocket } from '@/lib/socket';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const GLOBAL_CHAT_ID = '71000000-0000-0000-0000-000000000000';
 
 type Message = {
     id: string;
-    text: string; // our prop for rendering
-    content: string; // from db
-    sender_id: string;
-    created_at: string;
+    chatId: string;
+    senderId: string;
+    text: string;
+    createdAt: string;
+    seenAt: string | null;
 };
+
+function formatTime(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
 
 export default function ChatScreen() {
     const { user } = useAuthContext();
@@ -21,49 +29,121 @@ export default function ChatScreen() {
     const params = useLocalSearchParams();
     const matchId = params.matchId as string;
     const otherUserName = params.otherUserName as string;
+    const isGlobal = (params.chatId as string) === GLOBAL_CHAT_ID;
 
-    const [chatId, setChatId] = useState<string | null>(null);
+    const [chatId, setChatId] = useState<string | null>(params.chatId as string || null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
     const flatListRef = useRef<FlatList>(null);
 
-    useEffect(() => {
-        if (!user || !matchId) return;
+    // Only show 'Seen' under the LAST message sent by me that has been seen (Instagram-style)
+    const lastSeenMyMessageId = useMemo(() => {
+        const mySeenMessages = messages.filter(m => {
+            const sId = (m as any).senderId || (m as any).sender_id;
+            return sId === user?.id && (m as any).seenAt;
+        });
+        return mySeenMessages.length > 0 ? mySeenMessages[mySeenMessages.length - 1].id : null;
+    }, [messages, user?.id]);
 
-        let activeChatId: string;
+    // Mark other user's unread messages as seen (only for 1:1 personal chats)
+    const markMessagesAsSeen = async (cId: string) => {
+        if (!user || cId === GLOBAL_CHAT_ID) return; // skip for global chat
+        await supabase
+            .from('messages')
+            .update({ seenAt: new Date().toISOString() })
+            .eq('chatId', cId)
+            .neq('senderId', user.id)
+            .is('seenAt', null);
+    };
+
+    useEffect(() => {
+        if (!user) return;
+
+        let activeChatId: string | null = chatId;
         const socket = getSocket();
+        let realtimeChannel: any = null;
 
         const initChat = async () => {
             try {
-                // Determine chatId from matchId
-                const { data: chatData, error } = await supabase
-                    .from('chats')
-                    .select('id')
-                    .eq('matchId', matchId)
-                    .single();
+                if (!activeChatId && matchId) {
+                    const { data: chatData, error } = await supabase
+                        .from('chats')
+                        .select('id')
+                        .eq('matchId', matchId)
+                        .single();
+                    if (error) throw error;
+                    if (!chatData?.id) return;
+                    activeChatId = chatData.id;
+                    setChatId(activeChatId);
+                }
 
-                if (error) throw error;
-                if (!chatData?.id) return;
+                if (!activeChatId) return;
 
-                activeChatId = chatData.id;
-                setChatId(activeChatId);
+                // Global Chat setup
+                if (activeChatId === GLOBAL_CHAT_ID) {
+                    const { data: globalChat } = await supabase
+                        .from('chats').select('id').eq('id', activeChatId).maybeSingle();
+                    if (!globalChat) {
+                        const { error: insertError } = await supabase
+                            .from('chats').insert([{ id: activeChatId }]);
+                        if (insertError) console.error('❌ Global chat create failed:', insertError.message);
+                    }
+                    const { data: existingMember } = await supabase
+                        .from('chat_participants').select('id')
+                        .eq('chatId', activeChatId).eq('userId', user.id).maybeSingle();
+                    if (!existingMember) {
+                        await supabase.from('chat_participants').insert([{ chatId: activeChatId, userId: user.id }]);
+                    }
+                }
 
                 // Fetch existing messages
                 await fetchMessages(activeChatId);
 
-                // Connect socket
-                socket.emit('join_room', { chat_id: activeChatId });
+                // Mark received messages as seen
+                await markMessagesAsSeen(activeChatId);
 
+                // Socket: join room and listen for new messages
+                socket.emit('join_room', { chat_id: activeChatId });
                 socket.on('new_message', (msg: any) => {
                     setMessages((prev) => {
                         if (prev.some(m => m.id === msg.id)) return prev;
                         return [...prev, msg];
                     });
                     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+                    // Mark as seen if receiver is viewing
+                    if (msg.senderId !== user.id && activeChatId !== GLOBAL_CHAT_ID) {
+                        markMessagesAsSeen(activeChatId!);
+                    }
                 });
+
+                // Supabase Realtime: listen for seenAt updates on sent messages (1:1 only)
+                // This lets the sender see the "Seen" tick update in real-time without refresh
+                if (activeChatId !== GLOBAL_CHAT_ID) {
+                    realtimeChannel = supabase
+                        .channel(`seen-${activeChatId}`)
+                        .on(
+                            'postgres_changes',
+                            {
+                                event: 'UPDATE',
+                                schema: 'public',
+                                table: 'messages',
+                                filter: `chatId=eq.${activeChatId}`,
+                            },
+                            (payload: any) => {
+                                setMessages(prev =>
+                                    prev.map(m =>
+                                        m.id === payload.new.id
+                                            ? { ...m, seenAt: payload.new.seenAt }
+                                            : m
+                                    )
+                                );
+                            }
+                        )
+                        .subscribe();
+                }
             } catch (err) {
-                console.error("Error initializing chat:", err);
+                console.error('Error initializing chat:', err);
                 setLoading(false);
             }
         };
@@ -75,8 +155,9 @@ export default function ChatScreen() {
                 socket.emit('leave_room', { chat_id: activeChatId });
                 socket.off('new_message');
             }
+            if (realtimeChannel) supabase.removeChannel(realtimeChannel);
         };
-    }, [user, matchId]);
+    }, [user, matchId, chatId]);
 
     const fetchMessages = async (cId: string) => {
         try {
@@ -84,13 +165,10 @@ export default function ChatScreen() {
                 .from('messages')
                 .select('*')
                 .eq('chatId', cId)
-                .order('createdAt', { ascending: true }); // Prisma usually generates createdAt
-
+                .order('createdAt', { ascending: true });
             if (error) throw error;
-            
             setMessages(data || []);
             setLoading(false);
-            
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 200);
         } catch (error) {
             console.error('Error fetching messages:', error);
@@ -100,31 +178,29 @@ export default function ChatScreen() {
 
     const handleSend = () => {
         if (!inputText.trim() || !user || !chatId) return;
-
         const content = inputText.trim();
         setInputText('');
-
         const socket = getSocket();
-        const tempId = `temp-${Date.now()}`;
-        setMessages(prev => [...prev, { id: tempId, text: content, content: content, sender_id: user.id, senderId: user.id, created_at: new Date().toISOString(), createdAt: new Date().toISOString() } as unknown as Message]);
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-
-        socket.emit('send_message', {
-            chat_id: chatId,
-            sender_id: user.id,
-            text: content
-        });
+        socket.emit('send_message', { chat_id: chatId, sender_id: user.id, text: content });
     };
 
     const renderMessage = ({ item }: { item: Message }) => {
-        // Handle both older schema field (sender_id) and new Prisma field (senderId) during temp transition if needed
-        const sId = (item as any).senderId || item.sender_id;
-        const isMyMessage = sId === user?.id;
+        const senderId = (item as any).senderId || (item as any).sender_id;
+        const isMyMessage = senderId === user?.id;
+        const msgText = (item as any).text || (item as any).content || '';
+        const seenAt = (item as any).seenAt;
 
         return (
-            <View className={`w-full flex-row my-1 ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
-                <View className={`max-w-[75%] rounded-2xl px-4 py-3 ${isMyMessage ? 'bg-blue-500 rounded-tr-sm' : 'bg-gray-100 rounded-tl-sm'}`}>
-                    <Text className={`text-base ${isMyMessage ? 'text-white' : 'text-gray-900'}`}>{item.text}</Text>
+            <View style={[msgStyles.row, isMyMessage ? msgStyles.rowRight : msgStyles.rowLeft]}>
+                <View style={msgStyles.msgWrapper}>
+                    <View style={[msgStyles.bubble, isMyMessage ? msgStyles.bubbleMine : msgStyles.bubbleOther]}>
+                        <Text style={isMyMessage ? msgStyles.textMine : msgStyles.textOther}>{msgText}</Text>
+                    </View>
+
+                    {/* Seen status — only for sender, only in personal chats */}
+                    {isMyMessage && !isGlobal && item.id === lastSeenMyMessageId && (
+                        <Text style={msgStyles.seenText}>Seen</Text>
+                    )}
                 </View>
             </View>
         );
@@ -143,8 +219,8 @@ export default function ChatScreen() {
             </View>
 
             {/* Chat Area */}
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
@@ -165,19 +241,22 @@ export default function ChatScreen() {
                 )}
 
                 {/* Input Area */}
-                <View className="px-4 py-3 border-t border-gray-100 bg-white flex-row items-end">
+                <View style={msgStyles.inputRow}>
                     <TextInput
-                        className="flex-1 bg-gray-50 rounded-3xl px-5 py-3 pt-3 text-base text-black max-h-32 mr-3"
+                        style={msgStyles.input}
                         placeholder="Type a message..."
                         placeholderTextColor="#9ca3af"
                         value={inputText}
                         onChangeText={setInputText}
                         multiline
+                        blurOnSubmit={false}
+                        onSubmitEditing={handleSend}
+                        returnKeyType="send"
                     />
-                    <TouchableOpacity 
-                        onPress={handleSend} 
+                    <TouchableOpacity
+                        onPress={handleSend}
                         disabled={!inputText.trim()}
-                        className={`w-12 h-12 rounded-full items-center justify-center ${inputText.trim() ? 'bg-blue-500' : 'bg-gray-200'}`}
+                        style={[msgStyles.sendBtn, inputText.trim() ? msgStyles.sendBtnActive : msgStyles.sendBtnDisabled]}
                     >
                         <Ionicons name="send" size={20} color="white" style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
@@ -186,3 +265,25 @@ export default function ChatScreen() {
         </SafeAreaView>
     );
 }
+
+const msgStyles = StyleSheet.create({
+    row: { width: '100%', flexDirection: 'row', marginVertical: 4 },
+    rowRight: { justifyContent: 'flex-end' },
+    rowLeft: { justifyContent: 'flex-start' },
+    msgWrapper: { maxWidth: '80%', alignItems: 'flex-end' },
+    bubble: { borderRadius: 18, paddingHorizontal: 16, paddingVertical: 10 },
+    bubbleMine: { backgroundColor: '#3b82f6', borderTopRightRadius: 4 },
+    bubbleOther: { backgroundColor: '#f3f4f6', borderTopLeftRadius: 4, alignSelf: 'flex-start' },
+    textMine: { color: '#fff', fontSize: 15 },
+    textOther: { color: '#111', fontSize: 15 },
+
+    // Seen status row below my bubble
+    seenText: { fontSize: 11, color: '#9ca3af', marginTop: 2, marginRight: 2, textAlign: 'right' },
+
+    // Input area
+    inputRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: '#fff' },
+    input: { flex: 1, backgroundColor: '#f9fafb', borderRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, fontSize: 15, color: '#111', maxHeight: 120, marginRight: 12 },
+    sendBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    sendBtnActive: { backgroundColor: '#3b82f6' },
+    sendBtnDisabled: { backgroundColor: '#e5e7eb' },
+});

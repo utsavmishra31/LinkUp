@@ -2,9 +2,10 @@ import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useRootNavigationState } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Match = {
@@ -17,63 +18,49 @@ type Match = {
     created_at: string;
 };
 
+const GLOBAL_CHAT_ID = '71000000-0000-0000-0000-000000000000';
+
 export default function MessagesScreen() {
+    const rootNavState = useRootNavigationState();
     const { user } = useAuth();
-    const router = useRouter();
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'personal' | 'global'>('personal');
+
+    // Wait for navigation to be fully mounted before rendering
+    if (!rootNavState?.key) return null;
 
     useEffect(() => {
-        if (user) {
-            fetchMatches();
-        }
+        if (user) fetchMatches();
     }, [user]);
 
     const fetchMatches = async () => {
         if (!user) return;
         setLoading(true);
         try {
-            // Get all matches for the current user
             const { data: matchRows, error: matchError } = await supabase
                 .from('matches')
                 .select('*')
                 .or(`user1Id.eq.${user.id},user2Id.eq.${user.id}`);
 
             if (matchError) throw matchError;
+            if (!matchRows || matchRows.length === 0) { setMatches([]); return; }
 
-            if (!matchRows || matchRows.length === 0) {
-                setMatches([]);
-                return;
-            }
-
-            // For each match, we need the OTHER user's info
             const matchesWithUsers = await Promise.all(
                 matchRows.map(async (matchRow) => {
                     const otherUserId = matchRow.user1Id === user.id ? matchRow.user2Id : matchRow.user1Id;
-
                     const { data: userData, error: userError } = await supabase
                         .from('users')
                         .select('id, displayName, photos(*)')
                         .eq('id', otherUserId)
                         .single();
-
-                    if (userError) {
-                        console.error('Error fetching matched user:', userError);
-                        return null;
-                    }
-
-                    return {
-                        id: matchRow.id,
-                        created_at: matchRow.created_at,
-                        matchedUser: userData
-                    };
+                    if (userError) { console.error('Error fetching matched user:', userError); return null; }
+                    return { id: matchRow.id, created_at: matchRow.created_at, matchedUser: userData };
                 })
             );
 
             const validMatches = matchesWithUsers.filter((m): m is Match => m !== null);
-            // Sort by newest match first
             validMatches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            
             setMatches(validMatches);
         } catch (error) {
             console.error('Error in fetchMatches:', error);
@@ -93,23 +80,21 @@ export default function MessagesScreen() {
         return (
             <TouchableOpacity
                 onPress={() => router.push({ pathname: '/(modal)/chat', params: { matchId: item.id, otherUserId: u.id, otherUserName: u.displayName || 'User' } })}
-                className="flex-row items-center p-4 bg-white border-b border-gray-100"
+                style={styles.matchRow}
                 activeOpacity={0.7}
             >
-                <View className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 mr-4">
+                <View style={styles.avatarWrap}>
                     {photoUri ? (
-                        <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                        <Image source={{ uri: photoUri }} style={styles.avatarImg} contentFit="cover" />
                     ) : (
-                        <View className="flex-1 items-center justify-center">
+                        <View style={styles.avatarPlaceholder}>
                             <Ionicons name="person" size={24} color="#9ca3af" />
                         </View>
                     )}
                 </View>
-                <View className="flex-1">
-                    <Text className="text-lg font-bold text-gray-900 mb-1">{u.displayName}</Text>
-                    <Text className="text-gray-500 text-sm" numberOfLines={1}>
-                        Tap to start chatting...
-                    </Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.matchName}>{u.displayName}</Text>
+                    <Text style={styles.matchSub} numberOfLines={1}>Tap to start chatting...</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
             </TouchableOpacity>
@@ -118,38 +103,149 @@ export default function MessagesScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView className="flex-1 bg-white items-center justify-center">
+            <SafeAreaView style={styles.centered}>
                 <ActivityIndicator size="large" color="#000" />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <View className="px-6 pt-10 pb-4">
-                <Text className="text-4xl font-bold text-black border-b border-gray-100 pb-4">
-                    Messages
-                </Text>
+        <SafeAreaView style={styles.container} edges={['top']}>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.title}>Messages</Text>
+
+                {/* Tab switcher — all styles via StyleSheet, no dynamic className */}
+                <View style={styles.tabBar}>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('personal')}
+                        style={[styles.tabBtn, activeTab === 'personal' && styles.tabBtnActive]}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="person" size={18} color={activeTab === 'personal' ? '#000' : '#9ca3af'} />
+                        <Text style={[styles.tabLabel, activeTab === 'personal' && styles.tabLabelActive]}>
+                            Personal
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('global')}
+                        style={[styles.tabBtn, activeTab === 'global' && styles.tabBtnActive]}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="globe-outline" size={18} color={activeTab === 'global' ? '#3b82f6' : '#9ca3af'} />
+                        <Text style={[styles.tabLabel, activeTab === 'global' && styles.tabLabelActiveBlue]}>
+                            Global
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {matches.length > 0 ? (
-                <FlatList
-                    data={matches}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderMatchItem}
-                    showsVerticalScrollIndicator={false}
-                />
+            {/* Content */}
+            {activeTab === 'personal' ? (
+                matches.length > 0 ? (
+                    <FlatList
+                        data={matches}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderMatchItem}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 100 }}
+                    />
+                ) : (
+                    <View style={styles.emptyState}>
+                        <View style={styles.emptyIcon}>
+                            <Ionicons name="chatbubbles-outline" size={48} color="#d1d5db" />
+                        </View>
+                        <Text style={styles.emptyTitle}>No matches yet</Text>
+                        <Text style={styles.emptyBody}>
+                            Keep swiping! When you match with someone, you can start chatting here.
+                        </Text>
+                    </View>
+                )
             ) : (
-                <View className="flex-1 justify-center items-center px-8">
-                    <Text className="text-6xl mb-4">💬</Text>
-                    <Text className="text-2xl font-semibold text-black text-center mb-2">
-                        No matches yet
-                    </Text>
-                    <Text className="text-base text-gray-500 text-center">
-                        Keep swiping! When you match with someone, you can start chatting here.
-                    </Text>
+                <View style={styles.globalContainer}>
+                    {/* Global Group Card */}
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: '/(modal)/chat', params: { chatId: GLOBAL_CHAT_ID, otherUserName: 'Global Chat' } })}
+                        style={styles.globalCard}
+                        activeOpacity={0.7}
+                    >
+                        <LinearGradient
+                            colors={['#3b82f6', '#2563eb']}
+                            style={styles.globalIcon}
+                        >
+                            <Ionicons name="globe" size={32} color="white" />
+                        </LinearGradient>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.globalCardTitle}>Global Group</Text>
+                            <Text style={styles.globalCardSub} numberOfLines={2}>
+                                Connect with everyone on LinkUp! Join the conversation now.
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Info box */}
+                    <View style={styles.infoBox}>
+                        <View style={styles.infoRow}>
+                            <Ionicons name="information-circle" size={20} color="#3b82f6" />
+                            <Text style={styles.infoTitle}>About Global Chat</Text>
+                        </View>
+                        <Text style={styles.infoBody}>
+                            The global group is an open space for all LinkUp members. You don't need a mutual match to participate. Be respectful and have fun!
+                        </Text>
+                    </View>
+
+                    <View style={{ flex: 1 }} />
+
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: '/(modal)/chat', params: { chatId: GLOBAL_CHAT_ID, otherUserName: 'Global Chat' } })}
+                        style={styles.enterBtn}
+                    >
+                        <Text style={styles.enterBtnText}>Enter Global Chat</Text>
+                    </TouchableOpacity>
                 </View>
             )}
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#fff' },
+    centered: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+    header: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 16 },
+    title: { fontSize: 36, fontWeight: '800', color: '#000', marginBottom: 24 },
+
+    // Tab bar
+    tabBar: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 16, padding: 6 },
+    tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
+    tabBtnActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+    tabLabel: { marginLeft: 6, fontWeight: '700', color: '#9ca3af', fontSize: 14 },
+    tabLabelActive: { color: '#000' },
+    tabLabelActiveBlue: { color: '#3b82f6' },
+
+    // Match list
+    matchRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+    avatarWrap: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', backgroundColor: '#f3f4f6', marginRight: 16 },
+    avatarImg: { width: '100%', height: '100%' },
+    avatarPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    matchName: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 2 },
+    matchSub: { fontSize: 13, color: '#6b7280' },
+
+    // Empty state
+    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 80 },
+    emptyIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+    emptyTitle: { fontSize: 22, fontWeight: '700', color: '#000', textAlign: 'center', marginBottom: 8 },
+    emptyBody: { fontSize: 15, color: '#6b7280', textAlign: 'center', lineHeight: 22 },
+
+    // Global tab
+    globalContainer: { flex: 1, paddingHorizontal: 24, paddingTop: 8 },
+    globalCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#f3f4f6', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    globalIcon: { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+    globalCardTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
+    globalCardSub: { fontSize: 13, color: '#6b7280' },
+    infoBox: { marginTop: 24, backgroundColor: '#eff6ff', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#bfdbfe' },
+    infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    infoTitle: { marginLeft: 8, fontWeight: '700', color: '#2563eb', fontSize: 14 },
+    infoBody: { fontSize: 13, color: '#1e40af', lineHeight: 20, opacity: 0.8 },
+    enterBtn: { backgroundColor: '#3b82f6', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 40, shadowColor: '#3b82f6', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+    enterBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+});
