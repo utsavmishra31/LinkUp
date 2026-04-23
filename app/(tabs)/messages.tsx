@@ -38,29 +38,32 @@ export default function MessagesScreen() {
         if (!user) return;
         setLoading(true);
         try {
-            const { data: matchRows, error: matchError } = await supabase
+            // ✅ Single query with JOIN — no N+1 problem
+            // Fetches matches + other user's profile + photos in ONE round trip
+            const { data: matchRows, error } = await supabase
                 .from('matches')
-                .select('*')
-                .or(`user1Id.eq.${user.id},user2Id.eq.${user.id}`);
+                .select(`
+                    id,
+                    created_at:createdAt,
+                    user1:users!matches_user1Id_fkey(id, displayName, photos(imageUrl, position)),
+                    user2:users!matches_user2Id_fkey(id, displayName, photos(imageUrl, position))
+                `)
+                .or(`user1Id.eq.${user.id},user2Id.eq.${user.id}`)
+                .order('createdAt', { ascending: false });
 
-            if (matchError) throw matchError;
+            if (error) throw error;
             if (!matchRows || matchRows.length === 0) { setMatches([]); return; }
 
-            const matchesWithUsers = await Promise.all(
-                matchRows.map(async (matchRow) => {
-                    const otherUserId = matchRow.user1Id === user.id ? matchRow.user2Id : matchRow.user1Id;
-                    const { data: userData, error: userError } = await supabase
-                        .from('users')
-                        .select('id, displayName, photos(*)')
-                        .eq('id', otherUserId)
-                        .single();
-                    if (userError) { console.error('Error fetching matched user:', userError); return null; }
-                    return { id: matchRow.id, created_at: matchRow.created_at, matchedUser: userData };
-                })
-            );
+            const validMatches: Match[] = matchRows.map((row: any) => {
+                // Pick the other user (not current user)
+                const matchedUser = row.user1?.id === user.id ? row.user2 : row.user1;
+                return {
+                    id: row.id,
+                    created_at: row.created_at,
+                    matchedUser,
+                };
+            }).filter((m: any) => m.matchedUser != null);
 
-            const validMatches = matchesWithUsers.filter((m): m is Match => m !== null);
-            validMatches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setMatches(validMatches);
         } catch (error) {
             console.error('Error in fetchMatches:', error);
