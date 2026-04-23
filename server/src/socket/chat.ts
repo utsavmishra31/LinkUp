@@ -53,6 +53,16 @@ export function setupSocket(io: SocketIOServer) {
             socket.leave(chat_id);
         });
 
+        // Typing indicators — broadcast to room EXCLUDING sender
+        // socket.to() = everyone in room except this socket (industry standard)
+        socket.on('typing_start', ({ chat_id, sender_id }: { chat_id: string; sender_id: string }) => {
+            socket.to(chat_id).emit('user_typing', { user_id: sender_id });
+        });
+
+        socket.on('typing_stop', ({ chat_id, sender_id }: { chat_id: string; sender_id: string }) => {
+            socket.to(chat_id).emit('user_stopped_typing', { user_id: sender_id });
+        });
+
         socket.on('disconnect', () => {
             console.log('🔌 Socket disconnected:', socket.id);
         });

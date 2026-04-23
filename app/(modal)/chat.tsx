@@ -1,13 +1,25 @@
 import { useAuthContext } from '@/lib/auth/AuthContext';
-import { disconnectSocket, getSocket } from '@/lib/socket';
+import { getSocket } from '@/lib/socket';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+    Animated,
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const GLOBAL_CHAT_ID = '71000000-0000-0000-0000-000000000000';
+const TYPING_STOP_DELAY = 3000; // 3s inactivity = stop typing (WhatsApp standard)
 
 type Message = {
     id: string;
@@ -18,11 +30,44 @@ type Message = {
     seenAt: string | null;
 };
 
-function formatTime(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+// ─── Animated Typing Dots (iMessage / WhatsApp style) ───────────────────────
+function TypingIndicator() {
+    const dots = [
+        useRef(new Animated.Value(0)).current,
+        useRef(new Animated.Value(0)).current,
+        useRef(new Animated.Value(0)).current,
+    ];
+
+    useEffect(() => {
+        const animations = dots.map((dot, i) =>
+            Animated.loop(
+                Animated.sequence([
+                    Animated.delay(i * 150),
+                    Animated.timing(dot, { toValue: -5, duration: 300, useNativeDriver: true }),
+                    Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+                    Animated.delay(600),
+                ])
+            )
+        );
+        animations.forEach(a => a.start());
+        return () => animations.forEach(a => a.stop());
+    }, []);
+
+    return (
+        <View style={typingStyles.container}>
+            <View style={typingStyles.bubble}>
+                {dots.map((dot, i) => (
+                    <Animated.View
+                        key={i}
+                        style={[typingStyles.dot, { transform: [{ translateY: dot }] }]}
+                    />
+                ))}
+            </View>
+        </View>
+    );
 }
 
+// ─── Main Chat Screen ────────────────────────────────────────────────────────
 export default function ChatScreen() {
     const { user } = useAuthContext();
     const router = useRouter();
@@ -35,20 +80,24 @@ export default function ChatScreen() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
-    const flatListRef = useRef<FlatList>(null);
+    const [isOtherTyping, setIsOtherTyping] = useState(false);
 
-    // Only show 'Seen' under the LAST message sent by me that has been seen (Instagram-style)
+    const flatListRef = useRef<FlatList>(null);
+    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isTypingRef = useRef(false); // track if we've emitted typing_start
+
+    // Instagram-style: only show "Seen" under the LAST seen message I sent
     const lastSeenMyMessageId = useMemo(() => {
-        const mySeenMessages = messages.filter(m => {
+        const mine = messages.filter(m => {
             const sId = (m as any).senderId || (m as any).sender_id;
             return sId === user?.id && (m as any).seenAt;
         });
-        return mySeenMessages.length > 0 ? mySeenMessages[mySeenMessages.length - 1].id : null;
+        return mine.length > 0 ? mine[mine.length - 1].id : null;
     }, [messages, user?.id]);
 
-    // Mark other user's unread messages as seen (only for 1:1 personal chats)
+    // Mark received messages as seen (1:1 only, not global)
     const markMessagesAsSeen = async (cId: string) => {
-        if (!user || cId === GLOBAL_CHAT_ID) return; // skip for global chat
+        if (!user || cId === GLOBAL_CHAT_ID) return;
         await supabase
             .from('messages')
             .update({ seenAt: new Date().toISOString() })
@@ -68,19 +117,15 @@ export default function ChatScreen() {
             try {
                 if (!activeChatId && matchId) {
                     const { data: chatData, error } = await supabase
-                        .from('chats')
-                        .select('id')
-                        .eq('matchId', matchId)
-                        .single();
+                        .from('chats').select('id').eq('matchId', matchId).single();
                     if (error) throw error;
                     if (!chatData?.id) return;
                     activeChatId = chatData.id;
                     setChatId(activeChatId);
                 }
-
                 if (!activeChatId) return;
 
-                // Global Chat setup
+                // Global chat setup
                 if (activeChatId === GLOBAL_CHAT_ID) {
                     const { data: globalChat } = await supabase
                         .from('chats').select('id').eq('id', activeChatId).maybeSingle();
@@ -97,49 +142,48 @@ export default function ChatScreen() {
                     }
                 }
 
-                // Fetch existing messages
                 await fetchMessages(activeChatId);
-
-                // Mark received messages as seen
                 await markMessagesAsSeen(activeChatId);
 
-                // Socket: join room and listen for new messages
                 socket.emit('join_room', { chat_id: activeChatId });
+
+                // New message received
                 socket.on('new_message', (msg: any) => {
-                    setMessages((prev) => {
+                    setMessages(prev => {
                         if (prev.some(m => m.id === msg.id)) return prev;
                         return [...prev, msg];
                     });
                     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-                    // Mark as seen if receiver is viewing
                     if (msg.senderId !== user.id && activeChatId !== GLOBAL_CHAT_ID) {
                         markMessagesAsSeen(activeChatId!);
                     }
+                    // Hide typing indicator when message arrives
+                    setIsOtherTyping(false);
                 });
 
-                // Supabase Realtime: listen for seenAt updates on sent messages (1:1 only)
-                // This lets the sender see the "Seen" tick update in real-time without refresh
+                // ── Typing indicators ────────────────────────────────────
+                socket.on('user_typing', ({ user_id }: { user_id: string }) => {
+                    if (user_id !== user.id) setIsOtherTyping(true);
+                });
+
+                socket.on('user_stopped_typing', ({ user_id }: { user_id: string }) => {
+                    if (user_id !== user.id) setIsOtherTyping(false);
+                });
+
+                // Supabase Realtime — seen status updates (1:1 only)
                 if (activeChatId !== GLOBAL_CHAT_ID) {
                     realtimeChannel = supabase
                         .channel(`seen-${activeChatId}`)
-                        .on(
-                            'postgres_changes',
-                            {
-                                event: 'UPDATE',
-                                schema: 'public',
-                                table: 'messages',
-                                filter: `chatId=eq.${activeChatId}`,
-                            },
-                            (payload: any) => {
-                                setMessages(prev =>
-                                    prev.map(m =>
-                                        m.id === payload.new.id
-                                            ? { ...m, seenAt: payload.new.seenAt }
-                                            : m
-                                    )
-                                );
-                            }
-                        )
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'messages',
+                            filter: `chatId=eq.${activeChatId}`,
+                        }, (payload: any) => {
+                            setMessages(prev =>
+                                prev.map(m => m.id === payload.new.id ? { ...m, seenAt: payload.new.seenAt } : m)
+                            );
+                        })
                         .subscribe();
                 }
             } catch (err) {
@@ -154,7 +198,14 @@ export default function ChatScreen() {
             if (activeChatId) {
                 socket.emit('leave_room', { chat_id: activeChatId });
                 socket.off('new_message');
+                socket.off('user_typing');
+                socket.off('user_stopped_typing');
+                // Stop typing if user leaves chat mid-type
+                if (isTypingRef.current) {
+                    socket.emit('typing_stop', { chat_id: activeChatId, sender_id: user.id });
+                }
             }
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
             if (realtimeChannel) supabase.removeChannel(realtimeChannel);
         };
     }, [user, matchId, chatId]);
@@ -162,33 +213,69 @@ export default function ChatScreen() {
     const fetchMessages = async (cId: string) => {
         try {
             const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('chatId', cId)
+                .from('messages').select('*').eq('chatId', cId)
                 .order('createdAt', { ascending: true });
             if (error) throw error;
             setMessages(data || []);
             setLoading(false);
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 200);
-        } catch (error) {
-            console.error('Error fetching messages:', error);
+        } catch (err) {
+            console.error('Error fetching messages:', err);
             setLoading(false);
         }
+    };
+
+    // ── Industry-standard debounced typing logic ─────────────────────────────
+    // emit typing_start ONCE per session, auto-stop after 3s inactivity
+    const handleTextChange = (text: string) => {
+        setInputText(text);
+        if (!chatId || !user || isGlobal) return;
+
+        const socket = getSocket();
+
+        if (text.length === 0) {
+            // Input cleared — stop immediately
+            if (isTypingRef.current) {
+                isTypingRef.current = false;
+                socket.emit('typing_stop', { chat_id: chatId, sender_id: user.id });
+            }
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            return;
+        }
+
+        // Emit typing_start only once per session (not on every keystroke)
+        if (!isTypingRef.current) {
+            isTypingRef.current = true;
+            socket.emit('typing_start', { chat_id: chatId, sender_id: user.id });
+        }
+
+        // Reset the auto-stop timer (debounce: 3s of silence = stop typing)
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            isTypingRef.current = false;
+            socket.emit('typing_stop', { chat_id: chatId, sender_id: user.id });
+        }, TYPING_STOP_DELAY);
     };
 
     const handleSend = () => {
         if (!inputText.trim() || !user || !chatId) return;
         const content = inputText.trim();
         setInputText('');
-        const socket = getSocket();
-        socket.emit('send_message', { chat_id: chatId, sender_id: user.id, text: content });
+
+        // Stop typing indicator immediately on send
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        if (isTypingRef.current && !isGlobal) {
+            isTypingRef.current = false;
+            getSocket().emit('typing_stop', { chat_id: chatId, sender_id: user.id });
+        }
+
+        getSocket().emit('send_message', { chat_id: chatId, sender_id: user.id, text: content });
     };
 
     const renderMessage = ({ item }: { item: Message }) => {
         const senderId = (item as any).senderId || (item as any).sender_id;
         const isMyMessage = senderId === user?.id;
         const msgText = (item as any).text || (item as any).content || '';
-        const seenAt = (item as any).seenAt;
 
         return (
             <View style={[msgStyles.row, isMyMessage ? msgStyles.rowRight : msgStyles.rowLeft]}>
@@ -196,8 +283,7 @@ export default function ChatScreen() {
                     <View style={[msgStyles.bubble, isMyMessage ? msgStyles.bubbleMine : msgStyles.bubbleOther]}>
                         <Text style={isMyMessage ? msgStyles.textMine : msgStyles.textOther}>{msgText}</Text>
                     </View>
-
-                    {/* Seen status — only for sender, only in personal chats */}
+                    {/* Show "Seen" only under last seen message (Instagram-style) */}
                     {isMyMessage && !isGlobal && item.id === lastSeenMyMessageId && (
                         <Text style={msgStyles.seenText}>Seen</Text>
                     )}
@@ -207,47 +293,52 @@ export default function ChatScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
             {/* Header */}
-            <View className="flex-row items-center px-4 py-3 border-b border-gray-100 bg-white" style={{ zIndex: 10 }}>
-                <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
+            <View style={headerStyles.bar}>
+                <TouchableOpacity onPress={() => router.back()} style={headerStyles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color="#000" />
                 </TouchableOpacity>
-                <View className="flex-1">
-                    <Text className="text-lg font-bold text-black">{otherUserName || 'Chat'}</Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={headerStyles.title}>{otherUserName || 'Chat'}</Text>
+                    {/* Show typing under name in header — like Instagram */}
+                    {isOtherTyping && (
+                        <Text style={headerStyles.typingText}>typing...</Text>
+                    )}
                 </View>
             </View>
 
-            {/* Chat Area */}
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
+                style={{ flex: 1 }}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 {loading ? (
-                    <View className="flex-1 items-center justify-center">
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                         <ActivityIndicator color="#000" />
                     </View>
                 ) : (
                     <FlatList
                         ref={flatListRef}
                         data={messages}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={item => item.id}
                         renderItem={renderMessage}
-                        contentContainerStyle={{ padding: 16, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
+                        contentContainerStyle={{ padding: 16, paddingBottom: 8, flexGrow: 1, justifyContent: 'flex-end' }}
                         showsVerticalScrollIndicator={false}
                         onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                        // Animated dots at bottom of list when other user is typing
+                        ListFooterComponent={isOtherTyping ? <TypingIndicator /> : null}
                     />
                 )}
 
-                {/* Input Area */}
+                {/* Input */}
                 <View style={msgStyles.inputRow}>
                     <TextInput
                         style={msgStyles.input}
                         placeholder="Type a message..."
                         placeholderTextColor="#9ca3af"
                         value={inputText}
-                        onChangeText={setInputText}
+                        onChangeText={handleTextChange}
                         multiline
                         blurOnSubmit={false}
                         onSubmitEditing={handleSend}
@@ -266,24 +357,34 @@ export default function ChatScreen() {
     );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+const headerStyles = StyleSheet.create({
+    bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: '#fff' },
+    backBtn: { padding: 4, marginRight: 12 },
+    title: { fontSize: 17, fontWeight: '700', color: '#000' },
+    typingText: { fontSize: 12, color: '#9ca3af', marginTop: 1 },
+});
+
 const msgStyles = StyleSheet.create({
-    row: { width: '100%', flexDirection: 'row', marginVertical: 4 },
+    row: { width: '100%', flexDirection: 'row', marginVertical: 2 },
     rowRight: { justifyContent: 'flex-end' },
     rowLeft: { justifyContent: 'flex-start' },
     msgWrapper: { maxWidth: '80%', alignItems: 'flex-end' },
-    bubble: { borderRadius: 18, paddingHorizontal: 16, paddingVertical: 10 },
+    bubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
     bubbleMine: { backgroundColor: '#3b82f6', borderTopRightRadius: 4 },
     bubbleOther: { backgroundColor: '#f3f4f6', borderTopLeftRadius: 4, alignSelf: 'flex-start' },
     textMine: { color: '#fff', fontSize: 15 },
     textOther: { color: '#111', fontSize: 15 },
-
-    // Seen status row below my bubble
-    seenText: { fontSize: 11, color: '#9ca3af', marginTop: 2, marginRight: 2, textAlign: 'right' },
-
-    // Input area
+    seenText: { fontSize: 11, color: '#9ca3af', marginTop: 2, marginRight: 2 },
     inputRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: '#fff' },
     input: { flex: 1, backgroundColor: '#f9fafb', borderRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, fontSize: 15, color: '#111', maxHeight: 120, marginRight: 12 },
     sendBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
     sendBtnActive: { backgroundColor: '#3b82f6' },
     sendBtnDisabled: { backgroundColor: '#e5e7eb' },
+});
+
+const typingStyles = StyleSheet.create({
+    container: { flexDirection: 'row', paddingLeft: 16, paddingBottom: 8, paddingTop: 4 },
+    bubble: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 18, borderTopLeftRadius: 4, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', gap: 4 },
+    dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9ca3af' },
 });
