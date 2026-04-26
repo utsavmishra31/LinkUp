@@ -39,6 +39,16 @@ export const PREDEFINED_PROMPTS = [
     "Biggest risk I've taken",
 ];
 
+export const VIEWER_QUESTIONS = [
+    "What's your favorite movie?",
+    "Guess my favorite food",
+    "What's your perfect Sunday?",
+    "Tell me a joke",
+    "What are you looking for here?",
+    "Unpopular opinion?",
+    "First thing you noticed about me?",
+];
+
 export interface PromptData {
     id: string; // unique ID based on timestamp or random
     question: string;
@@ -47,9 +57,9 @@ export interface PromptData {
 
 // --- Reusable Components ---
 
-export const BioInput = ({ value, onChangeText, maxLength = 500, placeholder = "" }: { value: string, onChangeText: (t: string) => void, maxLength?: number, placeholder?: string }) => {
+export const BioInput = ({ value, onChangeText, maxLength = 500, placeholder = "", containerClassName = "mb-4" }: { value: string, onChangeText: (t: string) => void, maxLength?: number, placeholder?: string, containerClassName?: string }) => {
     return (
-        <View className="mb-6">
+        <View className={containerClassName}>
             <Text className="text-lg font-bold text-black mb-3">Bio</Text>
             <TextInput
                 className="bg-white border border-gray-200 rounded-xl p-4 text-black text-base leading-6 min-h-[80px] align-top"
@@ -257,6 +267,143 @@ export const PromptModal = ({
     );
 };
 
+export const ViewerQuestionModal = ({
+    visible,
+    onClose,
+    onSelect,
+}: {
+    visible: boolean;
+    onClose: () => void;
+    onSelect: (question: string, options?: string[], correctAnswer?: number) => void;
+}) => {
+    const [customQuestion, setCustomQuestion] = useState('');
+    const [showOptions, setShowOptions] = useState(false);
+    const [options, setOptions] = useState(['', '', '']);
+    const [correctIndex, setCorrectIndex] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (visible) {
+            setCustomQuestion('');
+            setShowOptions(false);
+            setOptions(['', '', '']);
+            setCorrectIndex(null);
+        }
+    }, [visible]);
+
+    const handleSaveCustom = () => {
+        const q = customQuestion.trim();
+        if (!q) return;
+
+        if (showOptions) {
+            const validOptions = options.map(o => o.trim());
+            if (validOptions.some(o => o.length === 0)) {
+                Alert.alert('Error', 'Please fill exactly 3 options.');
+                return;
+            }
+            if (correctIndex === null) {
+                Alert.alert('Error', 'Please select the correct option.');
+                return;
+            }
+            onSelect(q, validOptions, correctIndex);
+        } else {
+            onSelect(q);
+        }
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={onClose}
+        >
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+                <SafeAreaView className="flex-1 bg-white">
+                    <View className="px-6 py-4 border-b border-gray-100 flex-row justify-between items-center bg-white z-10 w-full">
+                        <View className="w-6" />
+                        <Text className="font-bold text-lg text-center flex-1">
+                            Question for Viewers
+                        </Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Ionicons name="close" size={24} color="black" />
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView className="flex-1 px-6">
+                        <View className="py-4 gap-y-1">
+                            <View className="mb-6">
+                                <Text className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Write your own</Text>
+                                <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl p-2 pl-4 mb-3">
+                                    <TextInput
+                                        className="flex-1 text-base text-black min-h-[44px]"
+                                        placeholder="Type your custom question..."
+                                        placeholderTextColor="#9ca3af"
+                                        value={customQuestion}
+                                        onChangeText={setCustomQuestion}
+                                        maxLength={100}
+                                    />
+                                </View>
+
+                                {customQuestion.trim().length > 0 && (
+                                    <>
+                                        <View className="flex-row items-center justify-between mb-3 px-2">
+                                            <Text className="text-sm font-medium text-gray-700">Make this a multiple-choice poll?</Text>
+                                            <TouchableOpacity onPress={() => setShowOptions(!showOptions)}>
+                                                <Ionicons name={showOptions ? 'checkbox' : 'square-outline'} size={24} color={showOptions ? 'black' : 'gray'} />
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {showOptions && (
+                                            <View className="pl-4 border-l-2 border-gray-200 mb-4 gap-y-3">
+                                                <Text className="text-xs text-gray-500 mb-1">Add 3 options and tap the circle to mark the correct one.</Text>
+                                                {[0, 1, 2].map(index => (
+                                                    <View key={index} className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl p-2 pl-3">
+                                                        <TouchableOpacity onPress={() => setCorrectIndex(index)} className="mr-3">
+                                                            <Ionicons name={correctIndex === index ? 'radio-button-on' : 'radio-button-off'} size={22} color={correctIndex === index ? 'green' : 'gray'} />
+                                                        </TouchableOpacity>
+                                                        <TextInput
+                                                            className="flex-1 text-base text-black py-2"
+                                                            placeholder={`Option ${index + 1}`}
+                                                            placeholderTextColor="#9ca3af"
+                                                            value={options[index]}
+                                                            onChangeText={text => {
+                                                                const newOptions = [...options];
+                                                                newOptions[index] = text;
+                                                                setOptions(newOptions);
+                                                            }}
+                                                        />
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        )}
+
+                                        <TouchableOpacity 
+                                            onPress={handleSaveCustom}
+                                            className="bg-black py-4 rounded-xl items-center"
+                                        >
+                                            <Text className="text-white font-bold text-base">Save Question</Text>
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                            </View>
+
+                            <Text className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2 mt-2">Or choose from list</Text>
+                            {VIEWER_QUESTIONS.map((q) => (
+                                <TouchableOpacity
+                                    key={q}
+                                    onPress={() => onSelect(q)}
+                                    className="py-4 border-b border-gray-50 active:bg-gray-50 -mx-6 px-6"
+                                >
+                                    <Text className="text-base text-gray-900 font-medium">{q}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </ScrollView>
+                </SafeAreaView>
+            </KeyboardAvoidingView>
+        </Modal>
+    );
+};
+
 export default function PromptsScreen() {
     const router = useRouter();
     const { user, refreshProfile } = useAuth();
@@ -264,7 +411,12 @@ export default function PromptsScreen() {
     // --- State ---
     const [bio, setBio] = useState('');
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
+    const [viewerQuestion, setViewerQuestion] = useState('');
+    const [viewerPollOptions, setViewerPollOptions] = useState<string[]>([]);
+    const [viewerPollAnswer, setViewerPollAnswer] = useState<number | null>(null);
+    
     const [isModalVisible, setModalVisible] = useState(false);
+    const [isViewerModalVisible, setViewerModalVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Track which slot we are currently editing (0, 1, or 2)
@@ -322,6 +474,9 @@ export default function PromptsScreen() {
                     userId: user.id,
                     prompts: validPrompts,
                     bio: bio.trim(),
+                    viewerQuestion: viewerQuestion || null,
+                    viewerPollOptions: viewerPollOptions.length > 0 ? viewerPollOptions : [],
+                    viewerPollAnswer: viewerPollAnswer !== null ? viewerPollAnswer : null,
                 });
 
             if (profileError) throw profileError;
@@ -371,11 +526,12 @@ export default function PromptsScreen() {
                 <BioInput
                     value={bio}
                     onChangeText={setBio}
+                    containerClassName="mb-2"
                 />
 
                 {/* Slots */}
-                <View className="gap-y-4">
-                    <Text className="text-lg font-bold text-black mb-3">Prompt</Text>
+                <View className="gap-y-4 mb-6">
+                    <Text className="text-lg font-bold text-black mb-1">Prompt</Text>
                     {[0].map((index) => (
                         <PromptSlot
                             key={index}
@@ -384,6 +540,56 @@ export default function PromptsScreen() {
                             onClear={selectedPrompts[index] ? () => handleClearSlot(index) : undefined}
                         />
                     ))}
+                </View>
+
+                {/* Viewer Question Slot */}
+                <View className="gap-y-4">
+                    <View>
+                        <Text className="text-lg font-bold text-black mb-1">Question for Viewers</Text>
+                        <Text className="text-sm text-gray-500">Ask a question for people to answer when they see your profile.</Text>
+                    </View>
+                    {viewerQuestion ? (
+                        <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative">
+                            <View className="flex-row justify-between items-start mb-2">
+                                <Text className="text-xs font-bold text-gray-500 uppercase tracking-wide pr-6">
+                                    Question for you
+                                </Text>
+                                <View className="flex-row gap-1 -mr-2 -mt-2">
+                                    <TouchableOpacity 
+                                        onPress={() => {
+                                            setViewerQuestion('');
+                                            setViewerPollOptions([]);
+                                            setViewerPollAnswer(null);
+                                        }} 
+                                        className="p-1 bg-gray-50 rounded-full"
+                                    >
+                                        <Ionicons name="close" size={16} color="#9ca3af" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            <TouchableOpacity onPress={() => setViewerModalVisible(true)}>
+                                <Text className="text-lg text-black leading-6 font-medium mb-3">
+                                    {viewerQuestion}
+                                </Text>
+                                {viewerPollOptions.length > 0 && (
+                                    <View className="gap-y-2">
+                                        {viewerPollOptions.map((opt, idx) => (
+                                            <View key={idx} className={`p-3 rounded-lg border ${viewerPollAnswer === idx ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                                                <Text className={`${viewerPollAnswer === idx ? 'text-green-700 font-bold' : 'text-gray-700'}`}>{opt}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={() => setViewerModalVisible(true)}
+                            className="border border-gray-200 rounded-xl p-6 items-center justify-center bg-white active:bg-gray-100"
+                        >
+                            <Text className="text-gray-700 font-medium">+ Choose a question</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <View className="flex-1" />
@@ -406,6 +612,17 @@ export default function PromptsScreen() {
                 onSave={handleSavePrompt}
                 initialData={activePromptData}
                 availablePrompts={availablePrompts}
+            />
+
+            <ViewerQuestionModal
+                visible={isViewerModalVisible}
+                onClose={() => setViewerModalVisible(false)}
+                onSelect={(q, options, correctIdx) => {
+                    setViewerQuestion(q);
+                    setViewerPollOptions(options || []);
+                    setViewerPollAnswer(correctIdx ?? null);
+                    setViewerModalVisible(false);
+                }}
             />
         </SafeAreaView>
     );

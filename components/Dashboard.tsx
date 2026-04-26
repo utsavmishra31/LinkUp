@@ -118,7 +118,7 @@ export default function Dashboard() {
             // Fetch users not in the exclude list
             const { data, error } = await supabase
                 .from('users')
-                .select('id, displayName, gender, dob, height, photos(*), profiles(bio)')
+                .select('id, displayName, gender, dob, height, photos(*), profiles(bio, viewerQuestion, viewerPollOptions, viewerPollAnswer)')
                 .not('id', 'in', `(${excludeArray.join(',')})`)
                 .limit(10);
 
@@ -131,6 +131,9 @@ export default function Dashboard() {
                         id: u.id,
                         displayName: u.displayName || 'User',
                         bio: profileData?.bio || '',
+                        viewerQuestion: profileData?.viewerQuestion || undefined,
+                        viewerPollOptions: profileData?.viewerPollOptions || undefined,
+                        viewerPollAnswer: profileData?.viewerPollAnswer ?? undefined,
                         photos: (u.photos || [])
                             .sort((a: any, b: any) => a.position - b.position)
                             .map((p: any) => ({

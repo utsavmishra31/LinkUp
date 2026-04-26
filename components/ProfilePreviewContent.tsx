@@ -24,6 +24,9 @@ export interface ProfilePreviewData {
     jobTitle?: string;
     company?: string;
     school?: string;
+    viewerQuestion?: string;
+    viewerPollOptions?: string[];
+    viewerPollAnswer?: number;
 }
 
 export interface ProfilePreviewContentProps {
@@ -35,6 +38,12 @@ export interface ProfilePreviewContentProps {
 }
 
 export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scrollEnabled = true }: ProfilePreviewContentProps) {
+    const [selectedPollOption, setSelectedPollOption] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        setSelectedPollOption(null);
+    }, [profile.id]);
+
     // Filter out invalid photos/prompts
     const validPhotos = profile.photos.filter(p => !!p.uri);
     const validPrompts = profile.prompts.filter((p): p is PromptData => p !== null && !!p.answer);
@@ -145,6 +154,72 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                         />
                     </View>
                 ))}
+
+                {/* Question for Viewers */}
+                {profile.viewerQuestion && (
+                    <View className="mb-8 bg-indigo-50 border border-indigo-100 p-6 rounded-xl shadow-sm relative">
+                        <View className="absolute -top-3 -right-2 bg-indigo-500 rounded-full w-8 h-8 items-center justify-center border-2 border-white shadow-sm">
+                            <Ionicons name="chatbubble-ellipses" size={16} color="white" />
+                        </View>
+                        <Text className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">
+                            Question for you
+                        </Text>
+                        <Text className="text-2xl font-semibold text-gray-900 leading-9 mb-4">
+                            {profile.viewerQuestion}
+                        </Text>
+                        
+                        {profile.viewerPollOptions && profile.viewerPollOptions.length > 0 ? (
+                            <View className="gap-y-3">
+                                {profile.viewerPollOptions.map((opt, idx) => {
+                                    const isSelected = selectedPollOption === idx;
+                                    const isCorrect = profile.viewerPollAnswer === idx;
+                                    const showResult = selectedPollOption !== null;
+                                    
+                                    let bgClass = "bg-white";
+                                    let borderClass = "border-indigo-100";
+                                    let textClass = "text-gray-700";
+                                    let icon = null;
+
+                                    if (showResult) {
+                                        if (isSelected && isCorrect) {
+                                            bgClass = "bg-green-100";
+                                            borderClass = "border-green-500";
+                                            textClass = "text-green-800 font-bold";
+                                            icon = <Ionicons name="checkmark-circle" size={20} color="#16a34a" />;
+                                        } else if (isSelected && !isCorrect) {
+                                            bgClass = "bg-red-100";
+                                            borderClass = "border-red-500";
+                                            textClass = "text-red-800 font-bold";
+                                            icon = <Ionicons name="close-circle" size={20} color="#dc2626" />;
+                                        } else if (isCorrect) {
+                                            bgClass = "bg-green-50";
+                                            borderClass = "border-green-400";
+                                            textClass = "text-green-700";
+                                            icon = <Ionicons name="checkmark-circle-outline" size={20} color="#16a34a" />;
+                                        }
+                                    }
+
+                                    return (
+                                        <TouchableOpacity 
+                                            key={idx}
+                                            disabled={showResult}
+                                            onPress={() => setSelectedPollOption(idx)}
+                                            className={`border rounded-xl px-4 py-3 flex-row items-center justify-between ${bgClass} ${borderClass}`}
+                                        >
+                                            <Text className={textClass}>{opt}</Text>
+                                            {icon}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        ) : (
+                            <View className="bg-white border border-indigo-100 rounded-full px-4 py-3 flex-row items-center">
+                                <Text className="text-gray-400 flex-1">Type your answer...</Text>
+                                <Ionicons name="send" size={18} color="#6366f1" />
+                            </View>
+                        )}
+                    </View>
+                )}
             </View>
         </>
     );

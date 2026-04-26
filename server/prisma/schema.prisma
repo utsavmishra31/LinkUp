@@ -86,6 +86,9 @@ model Profile {
   userId             String   @id @db.Uuid
   prompts            Json?
   bio                String?
+  viewerQuestion     String?
+  viewerPollOptions  String[]
+  viewerPollAnswer   Int?
   availableNext8Days Boolean[]
 
   location Unsupported("geography(Point,4326)")?

@@ -1,4 +1,4 @@
-import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot } from '@/app/(onboarding)/prompts';
+import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot, VIEWER_QUESTIONS, ViewerQuestionModal } from '@/app/(onboarding)/prompts';
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
@@ -48,6 +48,11 @@ export default function EditProfileScreen() {
     const [isPromptModalVisible, setPromptModalVisible] = useState(false);
     const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
 
+    const [viewerQuestion, setViewerQuestion] = useState<string | null>(null);
+    const [viewerPollOptions, setViewerPollOptions] = useState<string[]>([]);
+    const [viewerPollAnswer, setViewerPollAnswer] = useState<number | null>(null);
+    const [isViewerModalVisible, setViewerModalVisible] = useState(false);
+
     const [isHeightModalVisible, setHeightModalVisible] = useState(false);
     const [tempHeight, setTempHeight] = useState<typeof HEIGHT_OPTIONS[0] | null>(null);
 
@@ -61,6 +66,9 @@ export default function EditProfileScreen() {
         height: string;
         prompts: (PromptData | null)[];
         availableDayIndex: number | null;
+        viewerQuestion: string | null;
+        viewerPollOptions: string[];
+        viewerPollAnswer: number | null;
     } | null>(null);
 
     const hasChanges = React.useMemo(() => {
@@ -71,6 +79,9 @@ export default function EditProfileScreen() {
         if (gender !== initialState.gender) return true;
         if (height !== initialState.height) return true;
         if (availableDayIndex !== initialState.availableDayIndex) return true;
+        if (viewerQuestion !== initialState.viewerQuestion) return true;
+        if (viewerPollAnswer !== initialState.viewerPollAnswer) return true;
+        if (viewerPollOptions.join(',') !== initialState.viewerPollOptions.join(',')) return true;
 
         const sortedInterestedIn = [...interestedIn].sort().join(',');
         const sortedInitialInterestedIn = [...initialState.interestedIn].sort().join(',');
@@ -86,7 +97,7 @@ export default function EditProfileScreen() {
             if (currentPrompt.question !== initialPrompt.question || currentPrompt.answer !== initialPrompt.answer) return true;
         }
         return false;
-    }, [initialState, firstName, lastName, bio, gender, interestedIn, height, availableDayIndex, selectedPrompts]);
+    }, [initialState, firstName, lastName, bio, gender, interestedIn, height, availableDayIndex, selectedPrompts, viewerQuestion, viewerPollOptions, viewerPollAnswer]);
 
     useEffect(() => {
         const loadProfileData = async () => {
@@ -127,6 +138,9 @@ export default function EditProfileScreen() {
                         const index = profileData.availableNext8Days.findIndex((isAvailable: boolean) => isAvailable === true);
                         setAvailableDayIndex(index !== -1 ? index : null);
                     }
+                    setViewerQuestion(profileData.viewerQuestion || null);
+                    setViewerPollOptions(profileData.viewerPollOptions || []);
+                    setViewerPollAnswer(profileData.viewerPollAnswer ?? null);
                 }
 
                 const profileDataForState = (data.profile && Array.isArray(data.profile)) ? data.profile[0] : (data.profile || {});
@@ -142,6 +156,9 @@ export default function EditProfileScreen() {
                     availableDayIndex: (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true) !== -1
                         ? (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true)
                         : null,
+                    viewerQuestion: profileDataForState.viewerQuestion || null,
+                    viewerPollOptions: profileDataForState.viewerPollOptions || [],
+                    viewerPollAnswer: profileDataForState.viewerPollAnswer ?? null,
                 });
             } catch (err) {
                 console.error('Error fetching full profile:', err);
@@ -265,6 +282,9 @@ export default function EditProfileScreen() {
         height: height || undefined,
         interestedIn: interestedIn,
         prompts: selectedPrompts,
+        viewerQuestion: viewerQuestion || undefined,
+        viewerPollOptions: viewerPollOptions.length > 0 ? viewerPollOptions : undefined,
+        viewerPollAnswer: viewerPollAnswer !== null ? viewerPollAnswer : undefined,
     });
 
     const handleSlotPress = (index: number) => {
@@ -342,6 +362,9 @@ export default function EditProfileScreen() {
                     bio: bio.trim(),
                     prompts: validPrompts,
                     availableNext8Days: availabilityArray,
+                    viewerQuestion: viewerQuestion || null,
+                    viewerPollOptions: viewerPollOptions.length > 0 ? viewerPollOptions : [],
+                    viewerPollAnswer: viewerPollAnswer !== null ? viewerPollAnswer : null,
                 });
 
             if (profileError) throw profileError;
@@ -470,6 +493,53 @@ export default function EditProfileScreen() {
                                 </View>
                             </View>
 
+                            <View className="mb-8">
+                                <Text className="text-lg font-bold mb-1">Question for Viewers</Text>
+                                <Text className="text-sm text-gray-500 mb-3">Ask a question for people to answer when they see your profile.</Text>
+                                {viewerQuestion ? (
+                                    <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative">
+                                        <View className="flex-row justify-between items-start mb-2">
+                                            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wide pr-6">
+                                                Question for you
+                                            </Text>
+                                            <View className="flex-row gap-1 -mr-2 -mt-2">
+                                                <TouchableOpacity 
+                                                    onPress={() => {
+                                                        setViewerQuestion(null);
+                                                        setViewerPollOptions([]);
+                                                        setViewerPollAnswer(null);
+                                                    }} 
+                                                    className="p-1 bg-gray-50 rounded-full"
+                                                >
+                                                    <Ionicons name="close" size={16} color="#9ca3af" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                        <TouchableOpacity onPress={() => setViewerModalVisible(true)}>
+                                            <Text className="text-lg text-black leading-6 font-medium mb-3">
+                                                {viewerQuestion}
+                                            </Text>
+                                            {viewerPollOptions.length > 0 && (
+                                                <View className="gap-y-2">
+                                                    {viewerPollOptions.map((opt, idx) => (
+                                                        <View key={idx} className={`p-3 rounded-lg border ${viewerPollAnswer === idx ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                                                            <Text className={`${viewerPollAnswer === idx ? 'text-green-700 font-bold' : 'text-gray-700'}`}>{opt}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={() => setViewerModalVisible(true)}
+                                        className="border border-gray-200 rounded-xl p-6 items-center justify-center bg-white active:bg-gray-100"
+                                    >
+                                        <Text className="text-gray-700 font-medium">+ Choose a question</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
                             <Text className="text-lg font-bold mb-3">About You</Text>
                             <View className="mb-4">
                                 <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
@@ -554,6 +624,17 @@ export default function EditProfileScreen() {
                 onSave={handleSavePrompt}
                 initialData={activeSlotIndex !== null ? selectedPrompts[activeSlotIndex] : null}
                 availablePrompts={availablePrompts}
+            />
+
+            <ViewerQuestionModal
+                visible={isViewerModalVisible}
+                onClose={() => setViewerModalVisible(false)}
+                onSelect={(q, options, correctIdx) => {
+                    setViewerQuestion(q);
+                    setViewerPollOptions(options || []);
+                    setViewerPollAnswer(correctIdx ?? null);
+                    setViewerModalVisible(false);
+                }}
             />
 
             <Modal visible={isHeightModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setHeightModalVisible(false)}>
