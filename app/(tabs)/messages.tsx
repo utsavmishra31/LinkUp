@@ -213,7 +213,8 @@ export default function MessagesScreen() {
                     <View className="flex-row bg-gray-100 rounded-[16px] p-1.5">
                         <TouchableOpacity
                             onPress={() => setActiveTab('personal')}
-                            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl ${activeTab === 'personal' ? 'bg-white shadow-sm' : ''}`}
+                            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl ${activeTab === 'personal' ? 'bg-white' : ''}`}
+                            style={activeTab === 'personal' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 } : undefined}
                             activeOpacity={0.7}
                         >
                             <Ionicons name="person" size={18} color={activeTab === 'personal' ? '#000' : '#9ca3af'} />
@@ -223,7 +224,8 @@ export default function MessagesScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => setActiveTab('global')}
-                            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl ${activeTab === 'global' ? 'bg-white shadow-sm' : ''}`}
+                            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl ${activeTab === 'global' ? 'bg-white' : ''}`}
+                            style={activeTab === 'global' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 } : undefined}
                             activeOpacity={0.7}
                         >
                             <Ionicons name="globe-outline" size={18} color={activeTab === 'global' ? '#3b82f6' : '#9ca3af'} />
@@ -280,7 +282,8 @@ export default function MessagesScreen() {
                     {/* Global Group Card */}
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: '/(modal)/chat', params: { chatId: GLOBAL_CHAT_ID, otherUserName: 'Global Chat' } })}
-                        className="flex-row items-center bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm"
+                        className="flex-row items-center bg-white border border-gray-100 rounded-[24px] p-5"
+                        style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 }}
                         activeOpacity={0.7}
                     >
                         <LinearGradient
@@ -312,7 +315,8 @@ export default function MessagesScreen() {
 
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: '/(modal)/chat', params: { chatId: GLOBAL_CHAT_ID, otherUserName: 'Global Chat' } })}
-                        className="bg-blue-500 py-4 rounded-2xl items-center mb-10 shadow-lg shadow-blue-500"
+                        className="bg-blue-500 py-4 rounded-2xl items-center mb-10"
+                        style={{ shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}
                     >
                         <Text className="text-white text-[17px] font-bold">Enter Global Chat</Text>
                     </TouchableOpacity>
