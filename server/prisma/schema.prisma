@@ -58,6 +58,15 @@ model User {
   messagesSent Message[] @relation("UserMessages")
 
 
+  
+  
+  subscriptions     Subscription[] @relation("UserSubscriptions")
+  subscriptionPlan  SubscriptionPlan?
+  
+  exclusiveMedia    ExclusiveMedia[] @relation("UserExclusiveMedia")
+
+  isCreator     Boolean @default(false)
+  creatorExpiresAt DateTime?
   createdAt     DateTime @default(now())
 
   profile       Profile?
@@ -173,4 +182,53 @@ model Reject {
 
   @@unique([rejecter_id, rejected_id])
   @@map("rejects")
+}
+
+
+
+
+
+
+
+model SubscriptionPlan {
+  id        String   @id @default(uuid())
+  creatorId String   @db.Uuid @unique
+  price     Int      // stored in paise e.g. 9900 = 99 INR
+  title     String?
+  createdAt DateTime @default(now())
+
+  creator   User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id            String   @id @default(uuid())
+  userId        String   @db.Uuid
+  creatorId     String   @db.Uuid
+  planId        String
+
+  startDate     DateTime @default(now())
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+
+  user     User @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@unique([userId, creatorId])
+  @@map("subscriptions")
+}
+
+model ExclusiveMedia {
+  id         String   @id @default(uuid())
+  creatorId  String   @db.Uuid
+  mediaUrl   String
+  type       String   @default("image")
+  caption    String?
+  createdAt  DateTime @default(now())
+
+  creator    User @relation("UserExclusiveMedia", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@map("exclusive_media")
 }

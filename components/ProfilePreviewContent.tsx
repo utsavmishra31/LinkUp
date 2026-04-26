@@ -188,6 +188,12 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                     <Ionicons name="close" size={30} color="#EF4444" />
                 </TouchableOpacity>
                 <TouchableOpacity
+                    onPress={() => {/* TODO: Implement lock feature */}}
+                    className="w-16 h-16 bg-white rounded-full items-center justify-center shadow-xl border border-gray-100 active:bg-gray-50"
+                >
+                    <Ionicons name="lock-closed" size={30} color="#3B82F6" />
+                </TouchableOpacity>
+                <TouchableOpacity
                     onPress={() => onLike?.(profile.id)}
                     className="w-16 h-16 bg-black rounded-full items-center justify-center shadow-xl active:opacity-80"
                 >

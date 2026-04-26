@@ -2,7 +2,8 @@ import { useAuth } from '@/lib/auth/useAuth';
 import { useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
+import Purchases from 'react-native-purchases';
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
     const { user, loading, profile } = useAuth();
@@ -22,6 +23,17 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
 
         if (user) {
+            // Configure RevenueCat with the user's ID
+            try {
+                if (Platform.OS === 'ios' && process.env.EXPO_PUBLIC_RC_APPLE_KEY) {
+                    Purchases.configure({ apiKey: process.env.EXPO_PUBLIC_RC_APPLE_KEY, appUserID: user.id });
+                } else if (Platform.OS === 'android' && process.env.EXPO_PUBLIC_RC_GOOGLE_KEY) {
+                    Purchases.configure({ apiKey: process.env.EXPO_PUBLIC_RC_GOOGLE_KEY, appUserID: user.id });
+                }
+            } catch (e) {
+                console.error('Error configuring Purchases', e);
+            }
+
             // User is signed in
             if (!profile || (profile && !profile.onboardingCompleted)) {
                 // User needs onboarding
