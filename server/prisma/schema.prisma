@@ -49,21 +49,36 @@ model User {
   matchesAsUser1 Match[] @relation("UserMatch1")
   matchesAsUser2 Match[] @relation("UserMatch2")
 
-  likesGiven    Like[]   @relation("UserLikesGiven")
-  likesReceived Like[]   @relation("UserLikesReceived")
-  rejectsGiven  Reject[] @relation("UserRejectsGiven")
+  likesGiven      Like[]   @relation("UserLikesGiven")
+  likesReceived   Like[]   @relation("UserLikesReceived")
+  rejectsGiven    Reject[] @relation("UserRejectsGiven")
   rejectsReceived Reject[] @relation("UserRejectsReceived")
 
   chatParticipants ChatParticipant[]
-  messagesSent Message[] @relation("UserMessages")
+  messagesSent     Message[] @relation("UserMessages")
 
+  createdAt DateTime @default(now())
 
-  createdAt     DateTime @default(now())
-
-  profile       Profile?
-  photos        Photo[]
+  profile          Profile?
+  photos           Photo[]
+  filterPreference FilterPreference?
 
   @@map("users")
+}
+
+
+// Stores per-user discovery filter preferences (filter-specific only)
+// interestedIn is on User model, availableNext8Days is on Profile model
+model FilterPreference {
+  userId        String @id @db.Uuid
+
+  minAge        Int    @default(18)
+  maxAge        Int    @default(80)
+  maxDistanceKm Int    @default(50)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("filter_preferences")
 }
 
 
@@ -75,20 +90,20 @@ model Profile {
 
   location Unsupported("geography(Point,4326)")?
 
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("profiles")
 }
 
 model Photo {
-  id         String   @id @default(uuid())
-  userId     String   @db.Uuid
-  imageUrl   String
-  position   Int
-  isPrimary  Boolean  @default(false)
+  id        String  @id @default(uuid())
+  userId    String  @db.Uuid
+  imageUrl  String
+  position  Int
+  isPrimary Boolean @default(false)
   createdAt DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, position])
   @@map("photos")
@@ -111,18 +126,18 @@ model Match {
 
 model Chat {
   id        String   @id @default(uuid())
-  matchId  String?  @unique
+  matchId   String?  @unique
   createdAt DateTime @default(now())
 
-  match Match? @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  match        Match?           @relation(fields: [matchId], references: [id], onDelete: Cascade)
   participants ChatParticipant[]
-  messages Message[]
+  messages     Message[]
 
   @@map("chats")
 }
 
 model ChatParticipant {
-  id      String @id @default(uuid())
+  id     String @id @default(uuid())
   chatId String
   userId String @db.Uuid
 
@@ -134,13 +149,13 @@ model ChatParticipant {
 }
 
 model Message {
-  id        String   @id @default(uuid())
+  id       String   @id @default(uuid())
   chatId   String
   senderId String   @db.Uuid
 
-  text     String
-  createdAt DateTime @default(now())
-  seenAt   DateTime?
+  text      String
+  createdAt DateTime  @default(now())
+  seenAt    DateTime?
 
   chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
   sender User @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
@@ -150,9 +165,9 @@ model Message {
 }
 
 model Like {
-  id        String   @id @default(uuid())
-  liker_id  String   @db.Uuid
-  liked_id  String   @db.Uuid
+  id       String   @id @default(uuid())
+  liker_id String   @db.Uuid
+  liked_id String   @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   liker User @relation("UserLikesGiven", fields: [liker_id], references: [id], onDelete: Cascade)

@@ -19,7 +19,16 @@ export default function InterestedInSelection() {
     const { user, refreshProfile } = useAuth();
     const router = useRouter();
 
-    const toggleOption = (value: 'MALE' | 'FEMALE' | 'OTHER') => {
+    const toggleOption = (value: 'MALE' | 'FEMALE' | 'OTHER' | 'EVERYONE') => {
+        if (value === 'EVERYONE') {
+            if (selectedGenders.length === 3) {
+                setSelectedGenders([]);
+            } else {
+                setSelectedGenders(['MALE', 'FEMALE', 'OTHER']);
+            }
+            return;
+        }
+
         setSelectedGenders((prev) => {
             if (prev.includes(value)) {
                 return prev.filter((item) => item !== value);
@@ -55,8 +64,11 @@ export default function InterestedInSelection() {
         }
     };
 
-    const Option = ({ label, value }: { label: string; value: 'MALE' | 'FEMALE' | 'OTHER' }) => {
-        const isSelected = selectedGenders.includes(value);
+    const Option = ({ label, value }: { label: string; value: 'MALE' | 'FEMALE' | 'OTHER' | 'EVERYONE' }) => {
+        const isSelected = value === 'EVERYONE' 
+            ? selectedGenders.length === 3 
+            : selectedGenders.includes(value as any);
+
         return (
             <TouchableOpacity
                 onPress={() => toggleOption(value)}
@@ -91,6 +103,7 @@ export default function InterestedInSelection() {
                     <Option label="Men" value="MALE" />
                     <Option label="Women" value="FEMALE" />
                     <Option label="Non-binary" value="OTHER" />
+                    <Option label="Everyone" value="EVERYONE" />
                 </View>
 
                 <ArrowButton

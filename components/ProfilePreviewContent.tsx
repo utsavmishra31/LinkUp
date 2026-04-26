@@ -43,7 +43,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
         <>
             {/* Main Photo with Gradient Overlay */}
             <View className="px-5 pt-16">
-                <View className="relative w-full h-[550px] rounded-3xl overflow-hidden bg-gray-100 shadow-sm mb-8">
+                <View className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 shadow-sm mb-8">
                     {validPhotos.length > 0 ? (
                         <Image
                             source={{ uri: validPhotos[0].uri }}
@@ -75,7 +75,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 {/* Personal Info Grid */}
                 <View className="flex-row flex-wrap gap-3 mb-8">
                     {profile.gender && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                             <Ionicons name="person-outline" size={18} color="#4B5563" />
                             <Text className="ml-2 text-gray-700 font-semibold">
                                 {profile.gender === 'MALE' ? 'Man' : profile.gender === 'FEMALE' ? 'Woman' : 'Non-binary'}
@@ -83,13 +83,13 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                         </View>
                     )}
                     {profile.height && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                             <Ionicons name="resize-outline" size={18} color="#4B5563" />
                             <Text className="ml-2 text-gray-700 font-semibold">{profile.height}</Text>
                         </View>
                     )}
                     {(profile.jobTitle || profile.company) && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                             <Ionicons name="briefcase-outline" size={18} color="#4B5563" />
                             <Text className="ml-2 text-gray-700 font-semibold text-sm">
                                 {profile.jobTitle}{profile.jobTitle && profile.company ? ' at ' : ''}{profile.company}
@@ -97,13 +97,13 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                         </View>
                     )}
                     {profile.school && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                             <Ionicons name="school-outline" size={18} color="#4B5563" />
                             <Text className="ml-2 text-gray-700 font-semibold text-sm">{profile.school}</Text>
                         </View>
                     )}
                     {profile.interestedIn?.map((interest) => (
-                        <View key={interest} className="flex-row items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                        <View key={interest} className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                             <View className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2" />
                             <Text className="text-gray-700 font-semibold text-sm">
                                 Interested in {interest === 'MALE' ? 'Men' : interest === 'FEMALE' ? 'Women' : 'Non-binary'}
@@ -124,7 +124,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 {/* Photos & Prompts Interleaved */}
                 {validPrompts.map((prompt) => (
                     <View key={prompt.id} className="mb-8">
-                        <View className="bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-sm">
+                        <View className="bg-gray-50 p-6 rounded-xl border border-gray-100 shadow-sm">
                             <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
                                 {prompt.question}
                             </Text>
@@ -136,7 +136,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 ))}
 
                 {validPhotos.slice(1).map((photo) => (
-                    <View key={photo.uri} className="mb-8 rounded-3xl overflow-hidden h-[500px] w-full bg-gray-100 shadow-sm">
+                    <View key={photo.uri} className="mb-8 rounded-xl overflow-hidden aspect-square w-full bg-gray-100 shadow-sm">
                         <Image
                             source={{ uri: photo.uri }}
                             className="w-full h-full"

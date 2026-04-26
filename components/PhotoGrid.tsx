@@ -315,6 +315,24 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
         }
     };
 
+    const handleReplace = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: false,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const newUri = result.assets[0].uri;
+                setCropQueue(prev => [newUri, ...prev.slice(1)]);
+            }
+        } catch (error) {
+            console.error('Error replacing image:', error);
+            Alert.alert('Error', 'Failed to pick image');
+        }
+    };
+
     return (
         <>
             <Sortable.Grid
@@ -333,7 +351,7 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                         return (
                             <View
                                 key={item.key}
-                                className="w-full aspect-[3/4] rounded-xl overflow-hidden relative bg-gray-100"
+                                className="w-full aspect-square rounded-xl overflow-hidden relative bg-gray-100"
                             >
                                 <Sortable.Handle style={{ width: '100%', height: '100%' }}>
                                     <View className="w-full h-full">
@@ -392,7 +410,7 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                         <Pressable
                             key={item.key}
                             onPress={() => pickImage()}
-                            className="w-full aspect-[3/4] rounded-xl overflow-hidden relative bg-gray-50 border-2 border-dashed border-gray-300 items-center justify-center"
+                            className="w-full aspect-square rounded-xl overflow-hidden relative bg-gray-50 border-2 border-dashed border-gray-300 items-center justify-center"
                         >
                             <Ionicons name="add" size={24} color="#9ca3af" />
                         </Pressable>
@@ -403,8 +421,10 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
             <ImageCropper
                 visible={!!activeCropImage}
                 imageUri={activeCropImage}
+                aspectRatio={1}
                 onCrop={onCropComplete}
                 onCancel={onCropCancel}
+                onReplace={handleReplace}
             />
         </>
     );
