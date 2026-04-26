@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useRootNavigationState } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Match = {
@@ -26,6 +26,9 @@ export default function MessagesScreen() {
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'personal' | 'global'>('personal');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
 
     // Wait for navigation to be fully mounted before rendering
     if (!rootNavState?.key) return null;
@@ -33,6 +36,38 @@ export default function MessagesScreen() {
     useEffect(() => {
         if (user) fetchMatches();
     }, [user]);
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (searchQuery.trim()) {
+                handleSearch(searchQuery.trim());
+            } else {
+                setSearchResults([]);
+                setIsSearching(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
+
+    const handleSearch = async (query: string) => {
+        setIsSearching(true);
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id, displayName, username, photos(imageUrl, position)')
+                .ilike('username', `%${query}%`)
+                .neq('id', user?.id) // Don't show current user
+                .limit(10);
+
+            if (error) throw error;
+            setSearchResults(data || []);
+        } catch (error) {
+            console.error('Error searching users:', error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
 
     const fetchMatches = async () => {
         if (!user) return;
@@ -83,68 +118,144 @@ export default function MessagesScreen() {
         return (
             <TouchableOpacity
                 onPress={() => router.push({ pathname: '/(modal)/chat', params: { matchId: item.id, otherUserId: u.id, otherUserName: u.displayName || 'User' } })}
-                style={styles.matchRow}
+                className="flex-row items-center p-4 bg-white border-b border-gray-100"
                 activeOpacity={0.7}
             >
-                <View style={styles.avatarWrap}>
+                <View className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 mr-4">
                     {photoUri ? (
-                        <Image source={{ uri: photoUri }} style={styles.avatarImg} contentFit="cover" />
+                        <Image source={{ uri: photoUri }} className="w-full h-full" contentFit="cover" />
                     ) : (
-                        <View style={styles.avatarPlaceholder}>
+                        <View className="flex-1 items-center justify-center">
                             <Ionicons name="person" size={24} color="#9ca3af" />
                         </View>
                     )}
                 </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.matchName}>{u.displayName}</Text>
-                    <Text style={styles.matchSub} numberOfLines={1}>Tap to start chatting...</Text>
+                <View className="flex-1">
+                    <Text className="text-[17px] font-bold text-gray-900 mb-0.5">{u.displayName}</Text>
+                    <Text className="text-[13px] text-gray-500" numberOfLines={1}>Tap to start chatting...</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
             </TouchableOpacity>
         );
     };
 
-    if (loading) {
+    const renderSearchItem = ({ item }: { item: any }) => {
+        const sortedPhotos = (item.photos || []).sort((a: any, b: any) => a.position - b.position);
+        const rawPhotoUrl = sortedPhotos[0]?.imageUrl;
+        const photoUri = rawPhotoUrl
+            ? (rawPhotoUrl.startsWith('http') ? rawPhotoUrl : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${rawPhotoUrl}`)
+            : null;
+
         return (
-            <SafeAreaView style={styles.centered}>
+            <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(modal)/chat', params: { otherUserId: item.id, otherUserName: item.displayName || 'User' } })}
+                className="flex-row items-center p-4 bg-white border-b border-gray-100"
+                activeOpacity={0.7}
+            >
+                <View className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 mr-4">
+                    {photoUri ? (
+                        <Image source={{ uri: photoUri }} className="w-full h-full" contentFit="cover" />
+                    ) : (
+                        <View className="flex-1 items-center justify-center">
+                            <Ionicons name="person" size={24} color="#9ca3af" />
+                        </View>
+                    )}
+                </View>
+                <View className="flex-1">
+                    <View className="flex-row items-center">
+                        <Text className="text-[17px] font-bold text-gray-900 mb-0.5">{item.displayName}</Text>
+                        {item.username && (
+                            <Text className="ml-1.5 text-[13px] text-gray-400 font-medium">@{item.username}</Text>
+                        )}
+                    </View>
+                    <Text className="text-[13px] text-gray-500" numberOfLines={1}>Tap to view profile and chat</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
+            </TouchableOpacity>
+        );
+    };
+
+    if (loading && !searchQuery) {
+        return (
+            <SafeAreaView className="flex-1 bg-white items-center justify-center">
                 <ActivityIndicator size="large" color="#000" />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.title}>Messages</Text>
+            <View className="px-6 pt-10 pb-4">
+                <Text className="text-[36px] font-extrabold text-black mb-6">Messages</Text>
 
-                {/* Tab switcher — all styles via StyleSheet, no dynamic className */}
-                <View style={styles.tabBar}>
-                    <TouchableOpacity
-                        onPress={() => setActiveTab('personal')}
-                        style={[styles.tabBtn, activeTab === 'personal' && styles.tabBtnActive]}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="person" size={18} color={activeTab === 'personal' ? '#000' : '#9ca3af'} />
-                        <Text style={[styles.tabLabel, activeTab === 'personal' && styles.tabLabelActive]}>
-                            Personal
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => setActiveTab('global')}
-                        style={[styles.tabBtn, activeTab === 'global' && styles.tabBtnActive]}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="globe-outline" size={18} color={activeTab === 'global' ? '#3b82f6' : '#9ca3af'} />
-                        <Text style={[styles.tabLabel, activeTab === 'global' && styles.tabLabelActiveBlue]}>
-                            Global
-                        </Text>
-                    </TouchableOpacity>
+                {/* Search Bar */}
+                <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2 mb-5">
+                    <Ionicons name="search" size={20} color="#9ca3af" style={{ marginRight: 10 }} />
+                    <TextInput
+                        placeholder="Search by username..."
+                        placeholderTextColor="#9ca3af"
+                        className="flex-1 text-base text-black py-1"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color="#9ca3af" />
+                        </TouchableOpacity>
+                    )}
                 </View>
+
+                {/* Tab switcher */}
+                {!searchQuery && (
+                    <View className="flex-row bg-gray-100 rounded-[16px] p-1.5">
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('personal')}
+                            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl ${activeTab === 'personal' ? 'bg-white shadow-sm' : ''}`}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="person" size={18} color={activeTab === 'personal' ? '#000' : '#9ca3af'} />
+                            <Text className={`ml-1.5 font-bold text-[14px] ${activeTab === 'personal' ? 'text-black' : 'text-gray-400'}`}>
+                                Personal
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('global')}
+                            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl ${activeTab === 'global' ? 'bg-white shadow-sm' : ''}`}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="globe-outline" size={18} color={activeTab === 'global' ? '#3b82f6' : '#9ca3af'} />
+                            <Text className={`ml-1.5 font-bold text-[14px] ${activeTab === 'global' ? 'text-blue-500' : 'text-gray-400'}`}>
+                                Global
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
 
             {/* Content */}
-            {activeTab === 'personal' ? (
+            {searchQuery ? (
+                <View className="flex-1">
+                    <Text className="text-lg font-bold text-black mx-6 mt-2.5 mb-2.5">Search Results</Text>
+                    {isSearching ? (
+                        <ActivityIndicator className="mt-5" color="#000" />
+                    ) : searchResults.length > 0 ? (
+                        <FlatList
+                            data={searchResults}
+                            keyExtractor={(item) => item.id}
+                            renderItem={renderSearchItem}
+                            showsVerticalScrollIndicator={false}
+                        />
+                    ) : (
+                        <View className="flex-1 items-center justify-center px-8 pb-20">
+                            <Text className="text-xl font-bold text-black text-center mb-2">No users found</Text>
+                            <Text className="text-[15px] text-gray-500 text-center leading-[22px]">Try searching for a different username.</Text>
+                        </View>
+                    )}
+                </View>
+            ) : activeTab === 'personal' ? (
                 matches.length > 0 ? (
                     <FlatList
                         data={matches}
@@ -154,101 +265,59 @@ export default function MessagesScreen() {
                         contentContainerStyle={{ paddingBottom: 100 }}
                     />
                 ) : (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyIcon}>
+                    <View className="flex-1 items-center justify-center px-8 pb-20">
+                        <View className="w-24 h-24 rounded-full bg-gray-50 items-center justify-center mb-6">
                             <Ionicons name="chatbubbles-outline" size={48} color="#d1d5db" />
                         </View>
-                        <Text style={styles.emptyTitle}>No matches yet</Text>
-                        <Text style={styles.emptyBody}>
+                        <Text className="text-xl font-bold text-black text-center mb-2">No matches yet</Text>
+                        <Text className="text-[15px] text-gray-500 text-center leading-[22px]">
                             Keep swiping! When you match with someone, you can start chatting here.
                         </Text>
                     </View>
                 )
             ) : (
-                <View style={styles.globalContainer}>
+                <View className="flex-1 px-6 pt-2">
                     {/* Global Group Card */}
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: '/(modal)/chat', params: { chatId: GLOBAL_CHAT_ID, otherUserName: 'Global Chat' } })}
-                        style={styles.globalCard}
+                        className="flex-row items-center bg-white border border-gray-100 rounded-[24px] p-5 shadow-sm"
                         activeOpacity={0.7}
                     >
                         <LinearGradient
                             colors={['#3b82f6', '#2563eb']}
-                            style={styles.globalIcon}
+                            className="w-16 h-16 rounded-2xl items-center justify-center mr-4"
                         >
                             <Ionicons name="globe" size={32} color="white" />
                         </LinearGradient>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.globalCardTitle}>Global Group</Text>
-                            <Text style={styles.globalCardSub} numberOfLines={2}>
+                        <View className="flex-1">
+                            <Text className="text-lg font-bold text-gray-900 mb-1">Global Group</Text>
+                            <Text className="text-[13px] text-gray-500" numberOfLines={2}>
                                 Connect with everyone on LinkUp! Join the conversation now.
                             </Text>
                         </View>
                     </TouchableOpacity>
 
                     {/* Info box */}
-                    <View style={styles.infoBox}>
-                        <View style={styles.infoRow}>
+                    <View className="mt-6 bg-blue-50 p-5 rounded-[20px] border border-blue-200">
+                        <View className="flex-row items-center mb-2.5">
                             <Ionicons name="information-circle" size={20} color="#3b82f6" />
-                            <Text style={styles.infoTitle}>About Global Chat</Text>
+                            <Text className="ml-2 font-bold text-blue-600 text-[14px]">About Global Chat</Text>
                         </View>
-                        <Text style={styles.infoBody}>
+                        <Text className="text-[13px] text-blue-800 leading-5 opacity-80">
                             The global group is an open space for all LinkUp members. You don't need a mutual match to participate. Be respectful and have fun!
                         </Text>
                     </View>
 
-                    <View style={{ flex: 1 }} />
+                    <View className="flex-1" />
 
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: '/(modal)/chat', params: { chatId: GLOBAL_CHAT_ID, otherUserName: 'Global Chat' } })}
-                        style={styles.enterBtn}
+                        className="bg-blue-500 py-4 rounded-2xl items-center mb-10 shadow-lg shadow-blue-500"
                     >
-                        <Text style={styles.enterBtnText}>Enter Global Chat</Text>
+                        <Text className="text-white text-[17px] font-bold">Enter Global Chat</Text>
                     </TouchableOpacity>
                 </View>
             )}
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    centered: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-    header: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 16 },
-    title: { fontSize: 36, fontWeight: '800', color: '#000', marginBottom: 24 },
-
-    // Tab bar
-    tabBar: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 16, padding: 6 },
-    tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
-    tabBtnActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-    tabLabel: { marginLeft: 6, fontWeight: '700', color: '#9ca3af', fontSize: 14 },
-    tabLabelActive: { color: '#000' },
-    tabLabelActiveBlue: { color: '#3b82f6' },
-
-    // Match list
-    matchRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-    avatarWrap: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', backgroundColor: '#f3f4f6', marginRight: 16 },
-    avatarImg: { width: '100%', height: '100%' },
-    avatarPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    matchName: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 2 },
-    matchSub: { fontSize: 13, color: '#6b7280' },
-
-    // Empty state
-    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 80 },
-    emptyIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-    emptyTitle: { fontSize: 22, fontWeight: '700', color: '#000', textAlign: 'center', marginBottom: 8 },
-    emptyBody: { fontSize: 15, color: '#6b7280', textAlign: 'center', lineHeight: 22 },
-
-    // Global tab
-    globalContainer: { flex: 1, paddingHorizontal: 24, paddingTop: 8 },
-    globalCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#f3f4f6', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-    globalIcon: { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-    globalCardTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
-    globalCardSub: { fontSize: 13, color: '#6b7280' },
-    infoBox: { marginTop: 24, backgroundColor: '#eff6ff', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#bfdbfe' },
-    infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    infoTitle: { marginLeft: 8, fontWeight: '700', color: '#2563eb', fontSize: 14 },
-    infoBody: { fontSize: 13, color: '#1e40af', lineHeight: 20, opacity: 0.8 },
-    enterBtn: { backgroundColor: '#3b82f6', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 40, shadowColor: '#3b82f6', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    enterBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-});

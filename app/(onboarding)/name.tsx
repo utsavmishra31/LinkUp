@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function NameOnboarding() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { user, refreshProfile } = useAuth();
@@ -19,6 +20,11 @@ export default function NameOnboarding() {
     const handleContinue = async () => {
         if (!firstName.trim()) {
             Alert.alert('Required', 'First name is required.');
+            return;
+        }
+
+        if (!username.trim()) {
+            Alert.alert('Required', 'Username is required.');
             return;
         }
 
@@ -35,6 +41,7 @@ export default function NameOnboarding() {
                     id: user.id,
                     email: user.email,
                     displayName: firstName.trim(),
+                    username: username.trim().toLowerCase(),
                     surname: lastName.trim() || null,
                     onboardingStep: 2,
                 })
@@ -45,13 +52,17 @@ export default function NameOnboarding() {
             router.push('/(onboarding)/dob');
         } catch (error: any) {
             console.error('Error updating profile:', error);
-            Alert.alert('Error', 'Failed to save name. Please try again.');
+            if (error.code === '23505') {
+                Alert.alert('Error', 'Username already taken. Please choose another one.');
+            } else {
+                Alert.alert('Error', 'Failed to save name. Please try again.');
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const isValid = firstName.trim().length > 0;
+    const isValid = firstName.trim().length > 0 && username.trim().length > 0;
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -82,6 +93,18 @@ export default function NameOnboarding() {
                             placeholderTextColor="#9ca3af"
                         />
                         <Text className="text-gray-400 text-sm mt-2">This is optional.</Text>
+                    </View>
+
+                    <View className="mb-6">
+                        <TextInput
+                            value={username}
+                            onChangeText={(text) => setUsername(text.replace(/\s/g, ''))}
+                            placeholder="Unique username"
+                            className="border-b border-gray-500 py-3 text-2xl font-medium text-black"
+                            placeholderTextColor="#9ca3af"
+                            autoCapitalize="none"
+                        />
+                        <Text className="text-gray-400 text-sm mt-2">Pick something unique!</Text>
                     </View>
                 </View>
 

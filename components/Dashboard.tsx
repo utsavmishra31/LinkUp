@@ -212,34 +212,34 @@ export default function Dashboard() {
                 onRequestClose={() => setMatchedUser(null)}
             >
                 {matchedUser && (
-                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-                        <Text style={{ fontSize: 48, fontWeight: '900', color: '#10B981', fontStyle: 'italic', marginBottom: 40, textAlign: 'center' }}>
+                    <View className="flex-1 bg-black/95 justify-center items-center p-6">
+                        <Text className="text-[48px] font-[900] text-emerald-500 italic mb-10 text-center">
                             IT'S A MATCH!
                         </Text>
                         
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 60 }}>
+                        <View className="flex-row items-center justify-center mb-14">
                             {/* Current User */}
-                            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#374151', borderWidth: 4, borderColor: '#10B981', zIndex: 2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <View className="w-[120px] h-[120px] rounded-full bg-gray-700 border-4 border-emerald-500 z-[2] items-center justify-center overflow-hidden">
                                 <Ionicons name="person" size={50} color="#9ca3af" />
                             </View>
                             
-                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', zIndex: 3, marginHorizontal: -20 }}>
+                            <View className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center z-[3] -mx-5">
                                 <Ionicons name="heart" size={24} color="white" />
                             </View>
                             
                             {/* Matched User */}
-                            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#374151', borderWidth: 4, borderColor: '#10B981', zIndex: 1, overflow: 'hidden' }}>
+                            <View className="w-[120px] h-[120px] rounded-full bg-gray-700 border-4 border-emerald-500 z-[1] overflow-hidden">
                                 {matchedUser.photos[0]?.uri ? (
-                                    <Image source={{ uri: matchedUser.photos[0].uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                                    <Image source={{ uri: matchedUser.photos[0].uri }} className="w-full h-full" contentFit="cover" />
                                 ) : (
-                                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                    <View className="flex-1 items-center justify-center">
                                         <Ionicons name="person" size={50} color="#9ca3af" />
                                     </View>
                                 )}
                             </View>
                         </View>
 
-                        <Text style={{ color: 'white', fontSize: 18, textAlign: 'center', marginBottom: 40 }}>
+                        <Text className="text-white text-lg text-center mb-10">
                             You and {matchedUser.displayName} liked each other.
                         </Text>
 
@@ -248,16 +248,16 @@ export default function Dashboard() {
                                 setMatchedUser(null);
                                 router.push('/(tabs)/messages');
                             }}
-                            style={{ backgroundColor: '#10B981', width: '100%', paddingVertical: 16, borderRadius: 999, alignItems: 'center', marginBottom: 16 }}
+                            className="bg-emerald-500 w-full py-4 rounded-full items-center mb-4"
                         >
-                            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Send a Message</Text>
+                            <Text className="text-white text-base font-bold">Send a Message</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={() => setMatchedUser(null)}
-                            style={{ backgroundColor: 'transparent', width: '100%', paddingVertical: 16, borderRadius: 999, alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' }}
+                            className="bg-transparent w-full py-4 rounded-full items-center border-2 border-white/20"
                         >
-                            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Keep Swiping</Text>
+                            <Text className="text-white text-base font-bold">Keep Swiping</Text>
                         </TouchableOpacity>
                     </View>
                 )}

@@ -22,15 +22,10 @@ export type PhotoItem = {
     isPlaceholder?: boolean;
 };
 
-// ... (rest of file)
-
-
-
 const generateFileName = (uri: string) => {
     const ext = uri.split('.').pop() || 'jpg';
     return `photo_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
 };
-
 
 export const uploadImage = async (
     uri: string,
@@ -88,7 +83,6 @@ export const uploadImage = async (
     });
 };
 
-
 export const deleteImage = async (photoId: string) => {
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
@@ -106,7 +100,6 @@ export const deleteImage = async (photoId: string) => {
         throw new Error(data.error || 'Delete failed');
     }
 };
-
 
 interface PhotoGridProps {
     photos: PhotoItem[];
@@ -152,8 +145,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
             // Replace existing at index with temp item
             onChange(prev => {
                 const updated = [...prev];
-                // Ensure we replace at the correct index even if photos changed slightly
-                // But for index stability, using index is mostly fine in this context
                 if (editIndex >= 0 && editIndex < updated.length) {
                     updated[editIndex] = tempPhoto;
                 }
@@ -165,7 +156,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
         }
 
         try {
-            // Pass replaceOfId if in edit mode
             const replaceId = isEdit ? editMode?.photoId : undefined;
 
             const uploaded = await uploadImage(uri, (progress) => {
@@ -173,8 +163,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                 onChange(prev => {
                     const newPhotos = [...prev];
                     if (isEdit) {
-                        // Find by matching localUri at that index or nearby to be safe, 
-                        // but trusting index for now since we locked UI
                         if (newPhotos[editIndex]?.localUri === uri) {
                             newPhotos[editIndex] = {
                                 ...newPhotos[editIndex],
@@ -182,7 +170,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                             };
                         }
                     } else {
-                        // For new photos, find by localUri
                         const idx = newPhotos.findIndex(p => p.localUri === uri && p.status === 'uploading');
                         if (idx !== -1) {
                             newPhotos[idx] = {
@@ -194,13 +181,11 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                     return newPhotos;
                 });
             }, replaceId) as { imageUrl: string; id: string };
-            // backend returns { imageUrl, id? }
 
             onChange(prev => {
                 const newPhotos = [...prev];
 
                 if (isEdit) {
-                    // Update at specific index
                     if (newPhotos[editIndex]?.localUri === uri) {
                         newPhotos[editIndex] = {
                             ...newPhotos[editIndex],
@@ -211,7 +196,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                         };
                     }
                 } else {
-                    // Find the item with matching localUri/reference
                     const idx = newPhotos.findIndex(p => p.localUri === uri && p.status === 'uploading');
                     if (idx !== -1) {
                         newPhotos[idx] = {
@@ -247,31 +231,20 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
     const activeCropImage = cropQueue.length > 0 ? cropQueue[0] : null;
 
     const onCropComplete = (croppedUri: string) => {
-        // 1️⃣ Close cropper immediately (UI first)
         setCropQueue(prev => prev.slice(1));
-
-        // 2️⃣ Handle replace vs add
         if (editMode) {
-            const { index, photoId } = editMode;
+            const { index } = editMode;
             setEditMode(null);
-
-            // Upload new photo first (REPLACE logic handled by upload API now)
             handleUploadProcess(croppedUri, true, index);
-
-            // NO manual delete here. Backend handles validation and replacement.
-
         } else {
-            // Add new photo in background
             handleUploadProcess(croppedUri, false, -1);
         }
     };
-
 
     const onCropCancel = () => {
         setCropQueue(prev => prev.slice(1));
         setEditMode(null);
     };
-
 
     const getPhotoUri = (photo: PhotoItem): string => {
         if (photo.localUri) return photo.localUri;
@@ -316,13 +289,11 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                 const newUri = result.assets[0].uri;
                 const photo = photos[index];
 
-                // Set edit mode with index and photo ID (for deletion)
                 setEditMode({
                     index,
                     photoId: photo?.id
                 });
 
-                // Add to crop queue to trigger custom cropper
                 setCropQueue([newUri]);
             }
         } catch (error) {
@@ -333,24 +304,16 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
 
     const removePhoto = async (index: number) => {
         const photo = photos[index];
-
-        // 1️⃣ Remove instantly from UI
         onChange(prev => prev.filter((_, i) => i !== index));
-
-        // 2️⃣ Delete instantly from backend
         if (photo?.id) {
             try {
                 await deleteImage(photo.id);
             } catch (err) {
                 console.error(err);
-                Alert.alert(
-                    'Delete failed',
-                    'Could not delete photo from server'
-                );
+                Alert.alert('Delete failed', 'Could not delete photo from server');
             }
         }
     };
-
 
     return (
         <>
@@ -370,19 +333,9 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                         return (
                             <View
                                 key={item.key}
-                                style={{
-                                    width: '100%',
-                                    aspectRatio: 3 / 4,
-                                }}
-                                className="rounded-xl overflow-hidden relative bg-gray-100"
+                                className="w-full aspect-[3/4] rounded-xl overflow-hidden relative bg-gray-100"
                             >
-                                {/* DRAG HANDLE: The image itself is the handle */}
-                                <Sortable.Handle
-                                    style={{
-                                        width: '100%',
-                                        height: '100%',
-                                    }}
-                                >
+                                <Sortable.Handle style={{ width: '100%', height: '100%' }}>
                                     <View className="w-full h-full">
                                         <Image
                                             source={{ uri: getPhotoUri(photo) }}
@@ -393,7 +346,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                     </View>
                                 </Sortable.Handle>
 
-                                {/* ACTION BUTTON: Outside Sortable.Handle to stay clickable */}
                                 {photos.length <= 1 ? (
                                     <Pressable
                                         onPress={() => editPhoto(index)}
@@ -405,25 +357,11 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                 ) : (
                                     <Pressable
                                         onPress={() => {
-                                            Alert.alert(
-                                                '',
-                                                '',
-                                                [
-                                                    {
-                                                        text: 'Replace',
-                                                        onPress: () => editPhoto(index),
-                                                    },
-                                                    {
-                                                        text: 'Delete',
-                                                        style: 'destructive',
-                                                        onPress: () => removePhoto(index),
-                                                    },
-                                                    {
-                                                        text: 'Cancel',
-                                                        style: 'cancel',
-                                                    },
-                                                ]
-                                            );
+                                            Alert.alert('', '', [
+                                                { text: 'Replace', onPress: () => editPhoto(index) },
+                                                { text: 'Delete', style: 'destructive', onPress: () => removePhoto(index) },
+                                                { text: 'Cancel', style: 'cancel' },
+                                            ]);
                                         }}
                                         className="absolute top-1 right-1 bg-white/80 rounded-full p-1 z-10"
                                         hitSlop={10}
@@ -438,7 +376,6 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                                     </View>
                                 )}
 
-                                {/* Uploading Overlay */}
                                 {photo.status === 'uploading' && (
                                     <View className="absolute inset-0 bg-black/50 items-center justify-center z-20">
                                         <Text className="text-white font-semibold text-xs mb-1">Uploading</Text>
@@ -451,16 +388,11 @@ export function PhotoGrid({ photos, onChange, maxPhotos = 6 }: PhotoGridProps) {
                         );
                     }
 
-                    // Placeholder slot
                     return (
                         <Pressable
                             key={item.key}
                             onPress={() => pickImage()}
-                            style={{
-                                width: '100%',
-                                aspectRatio: 3 / 4,
-                            }}
-                            className="rounded-xl overflow-hidden relative bg-gray-50 border-2 border-dashed border-gray-300 items-center justify-center"
+                            className="w-full aspect-[3/4] rounded-xl overflow-hidden relative bg-gray-50 border-2 border-dashed border-gray-300 items-center justify-center"
                         >
                             <Ionicons name="add" size={24} color="#9ca3af" />
                         </Pressable>

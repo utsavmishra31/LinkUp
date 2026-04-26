@@ -10,7 +10,6 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Platform,
-    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
@@ -54,12 +53,13 @@ function TypingIndicator() {
     }, []);
 
     return (
-        <View style={typingStyles.container}>
-            <View style={typingStyles.bubble}>
+        <View className="flex-row pl-4 pb-2 pt-1">
+            <View className="flex-row bg-gray-100 rounded-[18px] rounded-tl-[4px] px-3.5 py-3 items-center gap-1">
                 {dots.map((dot, i) => (
                     <Animated.View
                         key={i}
-                        style={[typingStyles.dot, { transform: [{ translateY: dot }] }]}
+                        style={{ transform: [{ translateY: dot }] }}
+                        className="w-[7px] h-[7px] rounded-full bg-gray-400"
                     />
                 ))}
             </View>
@@ -115,14 +115,62 @@ export default function ChatScreen() {
 
         const initChat = async () => {
             try {
-                if (!activeChatId && matchId) {
-                    const { data: chatData, error } = await supabase
-                        .from('chats').select('id').eq('matchId', matchId).single();
-                    if (error) throw error;
-                    if (!chatData?.id) return;
-                    activeChatId = chatData.id;
-                    setChatId(activeChatId);
+                if (!activeChatId) {
+                    if (matchId) {
+                        const { data: chatData, error } = await supabase
+                            .from('chats').select('id').eq('matchId', matchId).single();
+                        if (error && error.code !== 'PGRST116') throw error;
+                        if (chatData?.id) {
+                            activeChatId = chatData.id;
+                        }
+                    } else if (params.otherUserId) {
+                        // Search for an existing 1:1 chat between these two users
+                        const { data: existingChats, error: searchError } = await supabase
+                            .from('chat_participants')
+                            .select('chatId')
+                            .eq('userId', user.id);
+                        
+                        if (searchError) throw searchError;
+
+                        if (existingChats && existingChats.length > 0) {
+                            const chatIds = existingChats.map(c => c.chatId);
+                            const { data: commonChat, error: commonError } = await supabase
+                                .from('chat_participants')
+                                .select('chatId')
+                                .in('chatId', chatIds)
+                                .eq('userId', params.otherUserId)
+                                .maybeSingle();
+                            
+                            if (commonError) throw commonError;
+                            if (commonChat) {
+                                activeChatId = commonChat.chatId;
+                            }
+                        }
+
+                        // If no chat exists, create one
+                        if (!activeChatId) {
+                            const { data: newChat, error: chatError } = await supabase
+                                .from('chats')
+                                .insert([{}])
+                                .select()
+                                .single();
+                            
+                            if (chatError) throw chatError;
+                            activeChatId = newChat.id;
+
+                            // Add both participants
+                            await supabase.from('chat_participants').insert([
+                                { chatId: activeChatId, userId: user.id },
+                                { chatId: activeChatId, userId: params.otherUserId }
+                            ]);
+                        }
+                    }
+                    
+                    if (activeChatId) {
+                        setChatId(activeChatId);
+                    }
                 }
+
                 if (!activeChatId) return;
 
                 // Global chat setup
@@ -278,14 +326,14 @@ export default function ChatScreen() {
         const msgText = (item as any).text || (item as any).content || '';
 
         return (
-            <View style={[msgStyles.row, isMyMessage ? msgStyles.rowRight : msgStyles.rowLeft]}>
-                <View style={msgStyles.msgWrapper}>
-                    <View style={[msgStyles.bubble, isMyMessage ? msgStyles.bubbleMine : msgStyles.bubbleOther]}>
-                        <Text style={isMyMessage ? msgStyles.textMine : msgStyles.textOther}>{msgText}</Text>
+            <View className={`w-full flex-row my-0.5 ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
+                <View className="max-w-[80%] items-end">
+                    <View className={`rounded-[18px] px-3.5 py-2.5 ${isMyMessage ? 'bg-blue-500 rounded-tr-[4px]' : 'bg-gray-100 rounded-tl-[4px] self-start'}`}>
+                        <Text className={isMyMessage ? 'text-white text-[15px]' : 'text-gray-900 text-[15px]'}>{msgText}</Text>
                     </View>
                     {/* Show "Seen" only under last seen message (Instagram-style) */}
                     {isMyMessage && !isGlobal && item.id === lastSeenMyMessageId && (
-                        <Text style={msgStyles.seenText}>Seen</Text>
+                        <Text className="text-[11px] text-gray-400 mt-0.5 mr-0.5">Seen</Text>
                     )}
                 </View>
             </View>
@@ -293,28 +341,28 @@ export default function ChatScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
+        <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
             {/* Header */}
-            <View style={headerStyles.bar}>
-                <TouchableOpacity onPress={() => router.back()} style={headerStyles.backBtn}>
+            <View className="flex-row items-center px-4 py-3 border-b border-gray-100 bg-white">
+                <TouchableOpacity onPress={() => router.back()} className="p-1 mr-3">
                     <Ionicons name="arrow-back" size={24} color="#000" />
                 </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                    <Text style={headerStyles.title}>{otherUserName || 'Chat'}</Text>
+                <View className="flex-1">
+                    <Text className="text-[17px] font-bold text-black">{otherUserName || 'Chat'}</Text>
                     {/* Show typing under name in header — like Instagram */}
                     {isOtherTyping && (
-                        <Text style={headerStyles.typingText}>typing...</Text>
+                        <Text className="text-[12px] text-gray-400 mt-0.5">typing...</Text>
                     )}
                 </View>
             </View>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
+                className="flex-1"
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 {loading ? (
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <View className="flex-1 items-center justify-center">
                         <ActivityIndicator color="#000" />
                     </View>
                 ) : (
@@ -332,9 +380,9 @@ export default function ChatScreen() {
                 )}
 
                 {/* Input */}
-                <View style={msgStyles.inputRow}>
+                <View className="flex-row items-end px-4 py-3 border-t border-gray-100 bg-white">
                     <TextInput
-                        style={msgStyles.input}
+                        className="flex-1 bg-gray-50 rounded-[24px] px-5 pt-3 pb-3 text-[15px] text-gray-900 max-h-[120px] mr-3"
                         placeholder="Type a message..."
                         placeholderTextColor="#9ca3af"
                         value={inputText}
@@ -347,7 +395,7 @@ export default function ChatScreen() {
                     <TouchableOpacity
                         onPress={handleSend}
                         disabled={!inputText.trim()}
-                        style={[msgStyles.sendBtn, inputText.trim() ? msgStyles.sendBtnActive : msgStyles.sendBtnDisabled]}
+                        className={`w-12 h-12 rounded-full items-center justify-center ${inputText.trim() ? 'bg-blue-500' : 'bg-gray-200'}`}
                     >
                         <Ionicons name="send" size={20} color="white" style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
@@ -356,35 +404,3 @@ export default function ChatScreen() {
         </SafeAreaView>
     );
 }
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
-const headerStyles = StyleSheet.create({
-    bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: '#fff' },
-    backBtn: { padding: 4, marginRight: 12 },
-    title: { fontSize: 17, fontWeight: '700', color: '#000' },
-    typingText: { fontSize: 12, color: '#9ca3af', marginTop: 1 },
-});
-
-const msgStyles = StyleSheet.create({
-    row: { width: '100%', flexDirection: 'row', marginVertical: 2 },
-    rowRight: { justifyContent: 'flex-end' },
-    rowLeft: { justifyContent: 'flex-start' },
-    msgWrapper: { maxWidth: '80%', alignItems: 'flex-end' },
-    bubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
-    bubbleMine: { backgroundColor: '#3b82f6', borderTopRightRadius: 4 },
-    bubbleOther: { backgroundColor: '#f3f4f6', borderTopLeftRadius: 4, alignSelf: 'flex-start' },
-    textMine: { color: '#fff', fontSize: 15 },
-    textOther: { color: '#111', fontSize: 15 },
-    seenText: { fontSize: 11, color: '#9ca3af', marginTop: 2, marginRight: 2 },
-    inputRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: '#fff' },
-    input: { flex: 1, backgroundColor: '#f9fafb', borderRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, fontSize: 15, color: '#111', maxHeight: 120, marginRight: 12 },
-    sendBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-    sendBtnActive: { backgroundColor: '#3b82f6' },
-    sendBtnDisabled: { backgroundColor: '#e5e7eb' },
-});
-
-const typingStyles = StyleSheet.create({
-    container: { flexDirection: 'row', paddingLeft: 16, paddingBottom: 8, paddingTop: 4 },
-    bubble: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 18, borderTopLeftRadius: 4, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', gap: 4 },
-    dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9ca3af' },
-});

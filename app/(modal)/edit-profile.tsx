@@ -256,6 +256,7 @@ export default function EditProfileScreen() {
     };
 
     const getPreviewProfile = () => ({
+        id: user?.id || '',
         photos: photos.map(p => ({ uri: p.localUri || (p.imageUrl?.startsWith('http') ? p.imageUrl : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${p.imageUrl}`) })),
         displayName: firstName,
         age: calculateAge(dob),
@@ -482,7 +483,7 @@ export default function EditProfileScreen() {
 
                             <View className="mb-4">
                                 <View className="flex-row items-center mb-2">
-                                    <Ionicons name="person-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                    <Ionicons name="person-outline" size={16} color="gray" className="mr-1" />
                                     <Text className="text-gray-500 text-xs uppercase">Gender</Text>
                                 </View>
                                 <View className="flex-row gap-3">
@@ -502,7 +503,7 @@ export default function EditProfileScreen() {
 
                             <View className="mb-4">
                                 <View className="flex-row items-center mb-2">
-                                    <Ionicons name="heart-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                    <Ionicons name="heart-outline" size={16} color="gray" className="mr-1" />
                                     <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
                                 </View>
                                 <View className="flex-row gap-3">
@@ -527,7 +528,7 @@ export default function EditProfileScreen() {
 
                             <View className="mb-4">
                                 <View className="flex-row items-center mb-2">
-                                    <Ionicons name="resize-outline" size={16} color="gray" style={{ marginRight: 4 }} />
+                                    <Ionicons name="resize-outline" size={16} color="gray" className="mr-1" />
                                     <Text className="text-gray-500 text-xs uppercase">Height</Text>
                                 </View>
                                 <TouchableOpacity

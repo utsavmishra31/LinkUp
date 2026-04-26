@@ -59,7 +59,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
 
                     <LinearGradient
                         colors={['transparent', 'rgba(0,0,0,0.8)']}
-                        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 200 }}
+                        className="absolute left-0 right-0 bottom-0 h-[200px]"
                     />
 
                     <View className="absolute bottom-6 left-5 right-5">
@@ -115,7 +115,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 {/* Bio */}
                 {!!profile.bio && (
                     <View className="mb-10">
-                        <Text className="text-xl text-gray-800 leading-8 font-normal" style={{ fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' }}>
+                        <Text className="text-xl text-gray-800 leading-8 font-normal">
                             {profile.bio}
                         </Text>
                     </View>

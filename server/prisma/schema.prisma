@@ -33,6 +33,7 @@ model User {
 
   authName      String?   // Google / Apple name (hidden, metadata)
   displayName   String?   // User-entered name (shown in app)
+  username      String?   @unique // Unique username
   surname       String?   // private, optional
 
   dob           DateTime? @db.Date
