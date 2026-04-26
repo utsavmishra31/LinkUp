@@ -46,11 +46,16 @@ model User {
   onboardingCompleted Boolean @default(false)
   onboardingStep      Int     @default(0)
 
-matchesAsUser1 Match[] @relation("UserMatch1")
-matchesAsUser2 Match[] @relation("UserMatch2")
+  matchesAsUser1 Match[] @relation("UserMatch1")
+  matchesAsUser2 Match[] @relation("UserMatch2")
 
-chatParticipants ChatParticipant[]
-messagesSent Message[] @relation("UserMessages")
+  likesGiven    Like[]   @relation("UserLikesGiven")
+  likesReceived Like[]   @relation("UserLikesReceived")
+  rejectsGiven  Reject[] @relation("UserRejectsGiven")
+  rejectsReceived Reject[] @relation("UserRejectsReceived")
+
+  chatParticipants ChatParticipant[]
+  messagesSent Message[] @relation("UserMessages")
 
 
   createdAt     DateTime @default(now())
@@ -138,8 +143,34 @@ model Message {
   seenAt   DateTime?
 
   chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-sender User @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  sender User @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([chatId, createdAt])
   @@map("messages")
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  liker_id  String   @db.Uuid
+  liked_id  String   @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  liker User @relation("UserLikesGiven", fields: [liker_id], references: [id], onDelete: Cascade)
+  liked User @relation("UserLikesReceived", fields: [liked_id], references: [id], onDelete: Cascade)
+
+  @@unique([liker_id, liked_id])
+  @@map("likes")
+}
+
+model Reject {
+  id          String   @id @default(uuid())
+  rejecter_id String   @db.Uuid
+  rejected_id String   @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rejecter User @relation("UserRejectsGiven", fields: [rejecter_id], references: [id], onDelete: Cascade)
+  rejected User @relation("UserRejectsReceived", fields: [rejected_id], references: [id], onDelete: Cascade)
+
+  @@unique([rejecter_id, rejected_id])
+  @@map("rejects")
 }
