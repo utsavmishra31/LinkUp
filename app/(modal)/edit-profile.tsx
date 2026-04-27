@@ -1,4 +1,4 @@
-import { BioInput, PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot, VIEWER_QUESTIONS, ViewerQuestionModal } from '@/app/(onboarding)/prompts';
+import { PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot, ViewerQuestionModal } from '@/app/(onboarding)/prompts';
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
@@ -22,6 +22,19 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const EditRow = ({ label, value, onPress }: { label: string, value: string, onPress: () => void }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        className="py-5 border-b border-gray-100 flex-row items-center justify-between active:opacity-70"
+    >
+        <View className="flex-1">
+            <Text className="text-black text-lg font-bold mb-1">{label}</Text>
+            <Text className="text-gray-500 text-xl font-normal">{value || 'Add'}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={22} color="#000" />
+    </TouchableOpacity>
+);
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -54,6 +67,10 @@ export default function EditProfileScreen() {
     const [isViewerModalVisible, setViewerModalVisible] = useState(false);
 
     const [isHeightModalVisible, setHeightModalVisible] = useState(false);
+    const [isNameModalVisible, setNameModalVisible] = useState(false);
+    const [isGenderModalVisible, setGenderModalVisible] = useState(false);
+    const [isInterestedInModalVisible, setInterestedInModalVisible] = useState(false);
+    const [isBioModalVisible, setBioModalVisible] = useState(false);
     const [tempHeight, setTempHeight] = useState<typeof HEIGHT_OPTIONS[0] | null>(null);
 
     const [initialState, setInitialState] = useState<{
@@ -480,7 +497,6 @@ export default function EditProfileScreen() {
                                 <AvailabilityPicker selectedDayIndex={availableDayIndex} onSelectDay={handleSelectDay} />
                             </View>
 
-                            <BioInput value={bio} onChangeText={setBio} placeholder="" />
 
                             <View className="mb-8">
                                 <Text className="text-lg font-bold mb-3">Prompts</Text>
@@ -503,12 +519,12 @@ export default function EditProfileScreen() {
                                                 Question for you
                                             </Text>
                                             <View className="flex-row gap-1 -mr-2 -mt-2">
-                                                <TouchableOpacity 
+                                                <TouchableOpacity
                                                     onPress={() => {
                                                         setViewerQuestion(null);
                                                         setViewerPollOptions([]);
                                                         setViewerPollAnswer(null);
-                                                    }} 
+                                                    }}
                                                     className="p-1 bg-gray-50 rounded-full"
                                                 >
                                                     <Ionicons name="close" size={16} color="#9ca3af" />
@@ -540,76 +556,36 @@ export default function EditProfileScreen() {
                                 )}
                             </View>
 
-                            <Text className="text-lg font-bold mb-3">About You</Text>
-                            <View className="mb-4">
-                                <Text className="text-gray-500 text-xs uppercase mb-1">Name</Text>
-                                <TextInput
-                                    value={firstName}
-                                    onChangeText={setFirstName}
-                                    className="bg-gray-50 p-4 rounded-xl text-black border border-gray-200"
-                                    placeholder="Name"
+                            <Text className="text-2xl font-bold mb-4 mt-4">About You</Text>
+                            <View className="mb-8">
+                                <EditRow
+                                    label="Name"
+                                    value={`${firstName} ${lastName}`.trim()}
+                                    onPress={() => setNameModalVisible(true)}
                                 />
-                            </View>
-
-                            <View className="mb-4">
-                                <View className="flex-row items-center mb-2">
-                                    <Ionicons name="person-outline" size={16} color="gray" className="mr-1" />
-                                    <Text className="text-gray-500 text-xs uppercase">Gender</Text>
-                                </View>
-                                <View className="flex-row gap-3">
-                                    {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
-                                        <TouchableOpacity
-                                            key={option}
-                                            onPress={() => setGender(option)}
-                                            className={`flex-1 py-3 items-center rounded-xl border ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
-                                        >
-                                            <Text className={`font-medium ${gender === option ? 'text-white' : 'text-black'}`}>
-                                                {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-
-                            <View className="mb-4">
-                                <View className="flex-row items-center mb-2">
-                                    <Ionicons name="heart-outline" size={16} color="gray" className="mr-1" />
-                                    <Text className="text-gray-500 text-xs uppercase">Interested In</Text>
-                                </View>
-                                <View className="flex-row gap-3">
-                                    {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
-                                        const isSelected = interestedIn.includes(option);
-                                        return (
-                                            <TouchableOpacity
-                                                key={option}
-                                                onPress={() => {
-                                                    setInterestedIn(prev => prev.includes(option) ? prev.filter(p => p !== option) : [...prev, option]);
-                                                }}
-                                                className={`flex-1 py-3 items-center rounded-xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-200'}`}
-                                            >
-                                                <Text className={`font-medium ${isSelected ? 'text-white' : 'text-black'}`}>
-                                                    {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-
-                            <View className="mb-4">
-                                <View className="flex-row items-center mb-2">
-                                    <Ionicons name="resize-outline" size={16} color="gray" className="mr-1" />
-                                    <Text className="text-gray-500 text-xs uppercase">Height</Text>
-                                </View>
-                                <TouchableOpacity
+                                <EditRow
+                                    label="Bio"
+                                    value={bio}
+                                    onPress={() => setBioModalVisible(true)}
+                                />
+                                <EditRow
+                                    label="Gender"
+                                    value={gender === 'MALE' ? 'Man' : gender === 'FEMALE' ? 'Woman' : gender === 'OTHER' ? 'Non-binary' : ''}
+                                    onPress={() => setGenderModalVisible(true)}
+                                />
+                                <EditRow
+                                    label="I'm interested in"
+                                    value={
+                                        interestedIn.length === 3 ? 'Everyone' :
+                                            interestedIn.map(g => g === 'MALE' ? 'Men' : g === 'FEMALE' ? 'Women' : 'Non-binary').join(', ')
+                                    }
+                                    onPress={() => setInterestedInModalVisible(true)}
+                                />
+                                <EditRow
+                                    label="Height"
+                                    value={height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : ''}
                                     onPress={() => setHeightModalVisible(true)}
-                                    className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex-row items-center justify-between"
-                                >
-                                    <Text className={`text-base ${height ? 'text-black' : 'text-gray-400'}`}>
-                                        {height ? `${height.split(' ')[0]}'${height.split(' ')[1]}"` : 'Select height'}
-                                    </Text>
-                                    <Ionicons name="chevron-forward" size={20} color="gray" />
-                                </TouchableOpacity>
+                                />
                             </View>
                         </ScrollView>
                     </KeyboardAvoidingView>
@@ -650,6 +626,156 @@ export default function EditProfileScreen() {
                         <HeightPicker initialHeight={height} onHeightChange={setTempHeight} />
                     </View>
                 </SafeAreaView>
+            </Modal>
+
+            {/* Name Modal */}
+            <Modal visible={isNameModalVisible} animationType="slide" transparent={true} onRequestClose={() => setNameModalVisible(false)}>
+                <View className="flex-1 justify-end bg-black/50">
+                    <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setNameModalVisible(false)} />
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                        <View className="bg-white rounded-t-[40px] p-6 pb-12 shadow-2xl h-[60vh]">
+                            <View className="flex-row items-center justify-between mb-8">
+                                <TouchableOpacity onPress={() => setNameModalVisible(false)} className="p-2 -ml-2">
+                                    <Ionicons name="arrow-back" size={24} color="black" />
+                                </TouchableOpacity>
+                                <Text className="text-2xl font-bold">Edit Name</Text>
+                                <View className="w-10" />
+                            </View>
+                            <View className="gap-y-6">
+                                <View>
+                                    <Text className="text-gray-500 text-xs uppercase mb-2 font-bold ml-1">First Name</Text>
+                                    <TextInput
+                                        value={firstName}
+                                        onChangeText={setFirstName}
+                                        className="bg-gray-50 p-5 rounded-2xl text-xl font-bold text-black border-2 border-gray-100 focus:border-black"
+                                        placeholder="First name"
+                                        autoFocus
+                                    />
+                                </View>
+                                <View>
+                                    <Text className="text-gray-500 text-xs uppercase mb-2 font-bold ml-1">Last Name</Text>
+                                    <TextInput
+                                        value={lastName}
+                                        onChangeText={setLastName}
+                                        className="bg-gray-50 p-5 rounded-2xl text-xl font-bold text-black border-2 border-gray-100 focus:border-black"
+                                        placeholder="Last name"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
+
+            {/* Gender Modal */}
+            <Modal visible={isGenderModalVisible} animationType="slide" transparent={true} onRequestClose={() => setGenderModalVisible(false)}>
+                <View className="flex-1 justify-end bg-black/50">
+                    <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setGenderModalVisible(false)} />
+                    <View className="bg-white rounded-t-[40px] p-6 pb-12 shadow-2xl h-[50vh]">
+                        <View className="flex-row items-center justify-between mb-8">
+                            <TouchableOpacity onPress={() => setGenderModalVisible(false)} className="p-2 -ml-2">
+                                <Ionicons name="arrow-back" size={24} color="black" />
+                            </TouchableOpacity>
+                            <Text className="text-2xl font-bold">Select Gender</Text>
+                            <View className="w-10" />
+                        </View>
+                        <View className="gap-y-4">
+                            {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
+                                <TouchableOpacity
+                                    key={option}
+                                    onPress={() => setGender(option)}
+                                    className={`p-4 rounded-2xl border-2 ${gender === option ? 'bg-black border-black' : 'bg-gray-50 border-gray-100'} flex-row items-center justify-between`}
+                                >
+                                    <Text className={`text-lg font-bold ${gender === option ? 'text-white' : 'text-black'}`}>
+                                        {option === 'MALE' ? 'Man' : option === 'FEMALE' ? 'Woman' : 'Non-binary'}
+                                    </Text>
+                                    {gender === option && <Ionicons name="checkmark-circle" size={24} color="white" />}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Interested In Modal */}
+            <Modal visible={isInterestedInModalVisible} animationType="slide" transparent={true} onRequestClose={() => setInterestedInModalVisible(false)}>
+                <View className="flex-1 justify-end bg-black/50">
+                    <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setInterestedInModalVisible(false)} />
+                    <View className="bg-white rounded-t-[40px] p-6 pb-12 shadow-2xl h-[60vh]">
+                        <View className="flex-row items-center justify-between mb-8">
+                            <TouchableOpacity onPress={() => setInterestedInModalVisible(false)} className="p-2 -ml-2">
+                                <Ionicons name="arrow-back" size={24} color="black" />
+                            </TouchableOpacity>
+                            <Text className="text-2xl font-bold">Interested In</Text>
+                            <View className="w-10" />
+                        </View>
+                        <View className="gap-y-4">
+                            {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => {
+                                const isSelected = interestedIn.includes(option);
+                                return (
+                                    <TouchableOpacity
+                                        key={option}
+                                        onPress={() => {
+                                            setInterestedIn(prev => prev.includes(option) ? prev.filter(p => p !== option) : [...prev, option]);
+                                        }}
+                                        className={`p-4 rounded-2xl border-2 ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-100'} flex-row items-center justify-between`}
+                                    >
+                                        <Text className={`text-lg font-bold ${isSelected ? 'text-white' : 'text-black'}`}>
+                                            {option === 'MALE' ? 'Men' : option === 'FEMALE' ? 'Women' : 'Non-binary'}
+                                        </Text>
+                                        {isSelected && <Ionicons name="checkmark-circle" size={24} color="white" />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (interestedIn.length === 3) {
+                                        setInterestedIn([]);
+                                    } else {
+                                        setInterestedIn(['MALE', 'FEMALE', 'OTHER']);
+                                    }
+                                }}
+                                className={`p-4 rounded-2xl border-2 ${interestedIn.length === 3 ? 'bg-black border-black' : 'bg-gray-50 border-gray-100'} flex-row items-center justify-between`}
+                            >
+                                <Text className={`text-lg font-bold ${interestedIn.length === 3 ? 'text-white' : 'text-black'}`}>
+                                    Everyone
+                                </Text>
+                                {interestedIn.length === 3 && <Ionicons name="checkmark-circle" size={24} color="white" />}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+            {/* Bio Modal */}
+            <Modal visible={isBioModalVisible} animationType="slide" transparent={true} onRequestClose={() => setBioModalVisible(false)}>
+                <View className="flex-1 justify-end bg-black/50">
+                    <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setBioModalVisible(false)} />
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                        <View className="bg-white rounded-t-[40px] p-6 pb-12 shadow-2xl h-[70vh]">
+                            <View className="flex-row items-center justify-between mb-8">
+                                <TouchableOpacity onPress={() => setBioModalVisible(false)} className="p-2 -ml-2">
+                                    <Ionicons name="arrow-back" size={24} color="black" />
+                                </TouchableOpacity>
+                                <Text className="text-2xl font-bold">Edit Bio</Text>
+                                <View className="w-10" />
+                            </View>
+                            <View>
+                                <Text className="text-gray-500 text-xs uppercase mb-2 font-bold ml-1">About me</Text>
+                                <TextInput
+                                    value={bio}
+                                    onChangeText={setBio}
+                                    multiline
+                                    className="bg-gray-50 p-6 rounded-3xl text-black border-2 border-gray-100 focus:border-black h-40 text-lg font-medium"
+                                    placeholder="Tell us about yourself..."
+                                    textAlignVertical="top"
+                                    autoFocus
+                                />
+                                <Text className="text-gray-400 text-xs mt-3 text-right font-bold mr-2">{bio.length}/500</Text>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
             </Modal>
         </View>
     );

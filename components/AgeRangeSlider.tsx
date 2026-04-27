@@ -23,6 +23,13 @@ export default function AgeRangeSlider({
     const [low, setLow] = useState(initialLow);
     const [high, setHigh] = useState(initialHigh);
 
+    React.useEffect(() => {
+        setLow(initialLow);
+        setHigh(initialHigh);
+        lowRef.current = initialLow;
+        highRef.current = initialHigh;
+    }, [initialLow, initialHigh]);
+
     const trackWidth = useRef(0);
     const lowRef = useRef(initialLow);
     const highRef = useRef(initialHigh);

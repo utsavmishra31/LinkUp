@@ -19,6 +19,11 @@ export default function DistanceSlider({
     onValueChange,
 }: DistanceSliderProps) {
     const [value, setValue] = useState(initialValue);
+
+    React.useEffect(() => {
+        setValue(initialValue);
+        valueRef.current = initialValue;
+    }, [initialValue]);
     const trackWidth = useRef(0);
     const valueRef = useRef(initialValue);
     const startPos = useRef(0);

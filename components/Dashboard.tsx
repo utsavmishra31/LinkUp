@@ -1,17 +1,15 @@
 import { ProfilePreviewContent, ProfilePreviewData } from '@/components/ProfilePreviewContent';
-import { AvailabilityPicker } from '@/components/AvailabilityPicker';
-import AgeRangeSlider from '@/components/AgeRangeSlider';
-import DistanceSlider from '@/components/DistanceSlider';
 import { supabase } from '@/lib/supabase';
 import { useAuthContext } from '@/lib/auth/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import FilterModal from '@/components/FilterModal';
 
 export default function Dashboard() {
     const { user } = useAuthContext();
@@ -20,11 +18,6 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [matchedUser, setMatchedUser] = useState<ProfilePreviewData | null>(null);
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [selectedAvailability, setSelectedAvailability] = useState<number | null>(null);
-    const [ageRange, setAgeRange] = useState({ low: 18, high: 45 });
-    const [distance, setDistance] = useState(50);
-    const [interestedIn, setInterestedIn] = useState<string[]>([]);
-    const [savingFilters, setSavingFilters] = useState(false);
 
     const toggleItem = (list: string[], item: string, setList: (v: string[]) => void) => {
         setList(list.includes(item) ? list.filter(i => i !== item) : [...list, item]);
@@ -32,121 +25,71 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (user) {
-            loadUserPreferences();
             fetchOtherUsers();
         }
     }, [user]);
 
-    // Load existing preferences from the DB to pre-populate the filter
-    const loadUserPreferences = async () => {
+
+    const fetchOtherUsers = async (cursor: string | null = null) => {
         if (!user) return;
+        if (!cursor) setLoading(true);
+        
         try {
-            const [{ data: userData }, { data: profileData }, { data: filterData }] = await Promise.all([
-                supabase.from('users').select('interestedIn').eq('id', user.id).single(),
-                supabase.from('profiles').select('availableNext8Days').eq('userId', user.id).single(),
-                supabase.from('filter_preferences').select('minAge, maxAge, maxDistanceKm').eq('userId', user.id).single(),
-            ]);
+            // 0. Update current user's lastActiveAt in background
+            supabase.rpc('update_last_active', { p_user_id: user.id }).then(() => {});
 
-            if (userData?.interestedIn?.length) setInterestedIn(userData.interestedIn);
-            if (filterData) {
-                setAgeRange({ low: filterData.minAge ?? 18, high: filterData.maxAge ?? 45 });
-                setDistance(filterData.maxDistanceKm ?? 50);
-            }
-            // Map boolean array back to selected day index
-            if (profileData?.availableNext8Days?.length) {
-                const idx = (profileData.availableNext8Days as boolean[]).findIndex(v => v === true);
-                if (idx !== -1) setSelectedAvailability(idx);
-            }
-        } catch (e) {
-            console.error('Error loading user preferences:', e);
-        }
-    };
-
-    // Save all filter preferences back to correct tables
-    const applyFilters = async () => {
-        if (!user) return;
-        setSavingFilters(true);
-        try {
-            // Build availableNext8Days boolean array (8 days, only selected index is true)
-            const availability = Array(8).fill(false);
-            if (selectedAvailability !== null) availability[selectedAvailability] = true;
-
-            await Promise.all([
-                // interestedIn lives on users table
-                supabase.from('users').update({ interestedIn }).eq('id', user.id),
-                // availableNext8Days lives on profiles table
-                supabase.from('profiles').update({ availableNext8Days: availability }).eq('userId', user.id),
-                // minAge, maxAge, maxDistanceKm live in filter_preferences
-                supabase.from('filter_preferences').upsert({
-                    userId: user.id,
-                    minAge: ageRange.low,
-                    maxAge: ageRange.high,
-                    maxDistanceKm: distance,
-                }),
-            ]);
-        } catch (e) {
-            console.error('Error saving filters:', e);
-        } finally {
-            setSavingFilters(false);
-            setFilterModalVisible(false);
-            fetchOtherUsers();
-        }
-    };
-
-
-    const fetchOtherUsers = async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            // Get all IDs we should exclude (likes, rejects, matches)
-            const [{ data: likesOut }, { data: rejectsOut }, { data: matches }] = await Promise.all([
-                supabase.from('likes').select('liked_id').eq('liker_id', user.id),
-                supabase.from('rejects').select('rejected_id').eq('rejecter_id', user.id),
-                supabase.from('matches').select('user1Id, user2Id').or(`user1Id.eq.${user.id},user2Id.eq.${user.id}`)
-            ]);
-            
-            const excludeIds = new Set<string>();
-            excludeIds.add(user.id);
-            (likesOut || []).forEach(l => excludeIds.add(l.liked_id));
-            (rejectsOut || []).forEach(r => excludeIds.add(r.rejected_id));
-            (matches || []).forEach(m => {
-                excludeIds.add(m.user1Id);
-                excludeIds.add(m.user2Id);
-            });
-            const excludeArray = Array.from(excludeIds);
-
-            // Fetch users not in the exclude list
+            // 1. ONE SINGLE SOURCE OF TRUTH (Backend handles EVERYTHING + returns JSON + Pagination)
             const { data, error } = await supabase
-                .from('users')
-                .select('id, displayName, gender, dob, height, photos(*), profiles(bio, viewerQuestion, viewerPollOptions, viewerPollAnswer)')
-                .not('id', 'in', `(${excludeArray.join(',')})`)
-                .limit(10);
+                .rpc('get_discovery_users', { 
+                    p_user_id: user.id, 
+                    p_limit: 20,
+                    p_cursor_last_active: cursor 
+                });
 
             if (error) {
-                console.error('Error fetching users:', error);
-            } else {
-                const mappedProfiles: ProfilePreviewData[] = (data || []).map((u: any) => {
-                    const profileData = Array.isArray(u.profiles) ? u.profiles[0] : u.profiles;
-                    return {
-                        id: u.id,
-                        displayName: u.displayName || 'User',
-                        bio: profileData?.bio || '',
-                        viewerQuestion: profileData?.viewerQuestion || undefined,
-                        viewerPollOptions: profileData?.viewerPollOptions || undefined,
-                        viewerPollAnswer: profileData?.viewerPollAnswer ?? undefined,
-                        photos: (u.photos || [])
-                            .sort((a: any, b: any) => a.position - b.position)
-                            .map((p: any) => ({
-                                uri: p.imageUrl.startsWith('http')
-                                    ? p.imageUrl
-                                    : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${p.imageUrl}`
-                            })),
-                        gender: u.gender,
-                        age: u.dob ? calculateAge(u.dob) : undefined,
-                        height: u.height,
-                        prompts: [],
-                    };
+                console.error('Error fetching discovery users from backend:', error);
+                if (!cursor) setProfiles([]);
+                setLoading(false);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                if (!cursor) setProfiles([]);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Parse the exact JSON payloads constructed by Postgres
+            const mappedProfiles: ProfilePreviewData[] = data.map((row: any) => {
+                const u = row.profile_data;
+                const profileData = u.profiles || {};
+                
+                return {
+                    id: u.id,
+                    displayName: u.displayName || 'User',
+                    bio: profileData.bio || '',
+                    viewerQuestion: profileData.viewerQuestion || undefined,
+                    viewerPollOptions: profileData.viewerPollOptions || undefined,
+                    viewerPollAnswer: profileData.viewerPollAnswer ?? undefined,
+                    photos: (u.photos || []).map((p: any) => ({
+                        uri: p.imageUrl.startsWith('http')
+                            ? p.imageUrl
+                            : `${process.env.EXPO_PUBLIC_R2_PUBLIC_URL}/${p.imageUrl}`
+                    })),
+                    gender: u.gender,
+                    age: u.dob ? calculateAge(u.dob) : undefined,
+                    height: u.height,
+                    prompts: [],
+                };
+            });
+
+            if (cursor) {
+                setProfiles(prev => {
+                    const existing = new Set(prev.map(p => p.id));
+                    const newOnes = mappedProfiles.filter(p => !existing.has(p.id));
+                    return [...prev, ...newOnes];
                 });
+            } else {
                 setProfiles(mappedProfiles);
             }
         } catch (error) {
@@ -349,113 +292,11 @@ export default function Dashboard() {
                 )}
             </Modal>
 
-            {/* Full-Screen Filter Modal */}
-            <Modal
+            <FilterModal
                 visible={filterModalVisible}
-                animationType="slide"
-                transparent={false}
-                onRequestClose={() => setFilterModalVisible(false)}
-            >
-                <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-                    {/* Header */}
-                    <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
-                        <TouchableOpacity
-                            onPress={() => setFilterModalVisible(false)}
-                            className="p-1"
-                        >
-                            <Ionicons name="arrow-back" size={24} color="black" />
-                        </TouchableOpacity>
-                        <Text className="text-xl font-bold text-black">Filters</Text>
-                        <View className="w-8" />
-                    </View>
-
-                    <ScrollView
-                        className="flex-1"
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 24, paddingBottom: 40 }}
-                    >
-                        {/* Interested In */}
-                        <View className="mb-8">
-                            <Text className="text-base font-bold text-black mb-3">Interested In</Text>
-                            <View className="flex-row flex-wrap gap-3">
-                                {[
-                                    { label: 'Men', value: 'MALE' },
-                                    { label: 'Women', value: 'FEMALE' },
-                                    { label: 'Everyone', value: 'OTHER' },
-                                ].map(({ label, value }) => {
-                                    const selected = interestedIn.includes(value);
-                                    return (
-                                        <TouchableOpacity
-                                            key={value}
-                                            onPress={() => toggleItem(interestedIn, value, setInterestedIn)}
-                                            style={{
-                                                paddingHorizontal: 20,
-                                                paddingVertical: 10,
-                                                borderRadius: 999,
-                                                backgroundColor: selected ? '#111827' : '#F3F4F6',
-                                            }}
-                                        >
-                                            <Text style={{ color: selected ? 'white' : '#111827', fontWeight: '600', fontSize: 14 }}>
-                                                {label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </View>
-
-
-
-                        {/* Age Range */}
-                        <View className="mb-8">
-                            <Text className="text-base font-bold text-black mb-1">Age Range</Text>
-                            <AgeRangeSlider
-                                minAge={18}
-                                maxAge={80}
-                                initialLow={ageRange.low}
-                                initialHigh={ageRange.high}
-                                onValuesChange={(low, high) => setAgeRange({ low, high })}
-                            />
-                        </View>
-
-                        {/* Distance */}
-                        <View className="mb-8">
-                            <Text className="text-base font-bold text-black mb-1">Distance</Text>
-                            <DistanceSlider
-                                minDist={1}
-                                maxDist={155}
-                                initialValue={distance}
-                                onValueChange={setDistance}
-                            />
-                        </View>
-
-                        {/* Available Date */}
-                        <View className="mb-8">
-                            <Text className="text-base font-bold text-black mb-3">Available Date</Text>
-                            <AvailabilityPicker
-                                selectedDayIndex={selectedAvailability}
-                                onSelectDay={setSelectedAvailability}
-                            />
-                        </View>
-                    </ScrollView>
-
-                    {/* Apply Button */}
-                    <View className="px-5 pb-8 pt-3 border-t border-gray-100">
-                        <TouchableOpacity
-                            onPress={applyFilters}
-                            disabled={savingFilters}
-                            className="bg-black py-4 rounded-2xl items-center flex-row justify-center"
-                        >
-                            {savingFilters ? (
-                                <ActivityIndicator color="white" className="mr-2" />
-                            ) : null}
-                            <Text className="text-white font-bold text-base">
-                                {savingFilters ? 'Saving...' : 'Apply Filters'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </SafeAreaView>
-            </Modal>
+                onClose={() => setFilterModalVisible(false)}
+                onApply={() => fetchOtherUsers()}
+            />
         </SafeAreaView>
 
     );
