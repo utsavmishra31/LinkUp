@@ -57,6 +57,7 @@ model User {
   chatParticipants ChatParticipant[]
   messagesSent     Message[] @relation("UserMessages")
 
+  last_active DateTime @default(now())
   createdAt DateTime @default(now())
 
   profile          Profile?
