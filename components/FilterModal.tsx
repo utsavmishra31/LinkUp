@@ -5,7 +5,8 @@ import {
     ScrollView,
     Text,
     TouchableOpacity,
-    View
+    View,
+    Switch
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
     const [ageRange, setAgeRange] = useState({ low: 18, high: 45 });
     const [distance, setDistance] = useState(50);
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
+    const [filterByAvailability, setFilterByAvailability] = useState(false);
     const [isInterestedInModalVisible, setIsInterestedInModalVisible] = useState(false);
     const [savingFilters, setSavingFilters] = useState(false);
     
@@ -54,6 +56,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                 setDistance(cache.distance);
                 setInterestedIn(cache.interestedIn);
                 setSelectedAvailability(cache.selectedAvailability);
+                setFilterByAvailability(cache.filterByAvailability ?? false);
             }
             loadUserPreferences();
         }
@@ -65,13 +68,14 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
             const [{ data: userData }, { data: profileData }, { data: filterData }] = await Promise.all([
                 supabase.from('users').select('interestedIn').eq('id', user.id).single(),
                 supabase.from('profiles').select('availableNext8Days').eq('userId', user.id).single(),
-                supabase.from('filter_preferences').select('minAge, maxAge, maxDistanceKm').eq('userId', user.id).single(),
+                supabase.from('filter_preferences').select('minAge, maxAge, maxDistanceKm, filterByAvailability').eq('userId', user.id).single(),
             ]);
 
             if (userData?.interestedIn?.length) setInterestedIn(userData.interestedIn);
             if (filterData) {
                 setAgeRange({ low: filterData.minAge ?? 18, high: filterData.maxAge ?? 45 });
                 setDistance(filterData.maxDistanceKm ?? 50);
+                setFilterByAvailability(filterData.filterByAvailability ?? false);
             }
             if (profileData?.availableNext8Days?.length) {
                 const idx = (profileData.availableNext8Days as boolean[]).findIndex(v => v === true);
@@ -85,6 +89,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                     distance: filterData?.maxDistanceKm ?? 50,
                     interestedIn: userData?.interestedIn || [],
                     selectedAvailability: profileData?.availableNext8Days ? (profileData.availableNext8Days as boolean[]).findIndex(v => v === true) : null,
+                    filterByAvailability: filterData?.filterByAvailability ?? false,
                 }
             });
         } catch (e) {
@@ -107,6 +112,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                     minAge: ageRange.low,
                     maxAge: ageRange.high,
                     maxDistanceKm: distance,
+                    filterByAvailability: filterByAvailability,
                 }),
             ]);
             
@@ -117,6 +123,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                     distance,
                     interestedIn,
                     selectedAvailability,
+                    filterByAvailability,
                 },
                 profiles: [] // Clear dashboard profiles cache on filter change so it fetches new ones
             });
@@ -193,7 +200,21 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
 
                     {/* Available Date */}
                     <View className="mb-8">
-                        <Text className="text-base font-bold text-black mb-3">Available Date</Text>
+                        <View className="flex-row items-center justify-between mb-3">
+                            <Text className="text-base font-bold text-black">Filter by Available Date</Text>
+                            <Switch
+                                value={filterByAvailability}
+                                onValueChange={setFilterByAvailability}
+                                trackColor={{ false: "#E5E7EB", true: "#000000" }}
+                                thumbColor={"#FFFFFF"}
+                                ios_backgroundColor="#E5E7EB"
+                            />
+                        </View>
+                        <Text className="text-sm text-gray-500 mb-4">
+                            {filterByAvailability 
+                                ? "Showing only users available on your selected day." 
+                                : "Showing all users. Select a day below to update your own availability."}
+                        </Text>
                         <AvailabilityPicker
                             selectedDayIndex={selectedAvailability}
                             onSelectDay={setSelectedAvailability}

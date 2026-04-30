@@ -10,6 +10,7 @@ export interface FilterState {
   distance: number;
   interestedIn: string[];
   selectedAvailability: number | null;
+  filterByAvailability: boolean;
 }
 
 // ─── Minimal Profile (store IDs + display only, NOT full JSON blobs) ──────────

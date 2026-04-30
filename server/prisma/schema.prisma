@@ -76,6 +76,7 @@ model FilterPreference {
   minAge        Int    @default(18)
   maxAge        Int    @default(80)
   maxDistanceKm Int    @default(50)
+  filterByAvailability Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
