@@ -257,18 +257,18 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <SafeAreaView className="flex-1 bg-white items-center justify-center">
+            <SafeAreaView className="flex-1 bg-[#F2F3F5] items-center justify-center">
                 <ActivityIndicator size="large" color="#000" />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <SafeAreaView className="flex-1 bg-[#F2F3F5]" edges={['top']}>
             <StatusBar style="dark" />
 
             <View className="flex-1">
-                <View className="flex-row items-center px-4 py-3 bg-white z-10">
+                <View className="flex-row items-center px-4 py-3 bg-[#F2F3F5] z-10">
                     <TouchableOpacity onPress={() => setFilterModalVisible(true)} className="p-1 active:opacity-60">
                         <Ionicons name="options" size={24} color="black" />
                     </TouchableOpacity>

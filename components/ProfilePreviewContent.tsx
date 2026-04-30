@@ -123,7 +123,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
 
                 {/* Bio */}
                 {!!profile.bio && (
-                    <View className="mb-10">
+                    <View className="mb-10 bg-white p-5 rounded-xl shadow-sm">
                         <Text className="text-xl text-gray-800 leading-8 font-normal">
                             {profile.bio}
                         </Text>
@@ -133,7 +133,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 {/* Photos & Prompts Interleaved */}
                 {validPrompts.map((prompt) => (
                     <View key={prompt.id} className="mb-8">
-                        <View className="bg-gray-50 p-6 rounded-xl border border-gray-100 shadow-sm">
+                        <View className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                             <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
                                 {prompt.question}
                             </Text>
@@ -157,7 +157,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
 
                 {/* Question for Viewers */}
                 {profile.viewerQuestion && (
-                    <View className="mb-8 bg-indigo-50 border border-indigo-100 p-6 rounded-xl shadow-sm relative">
+                    <View className="mb-8 bg-white border border-indigo-100 p-6 rounded-xl shadow-sm relative">
                         <View className="absolute -top-3 -right-2 bg-indigo-500 rounded-full w-8 h-8 items-center justify-center border-2 border-white shadow-sm">
                             <Ionicons name="chatbubble-ellipses" size={16} color="white" />
                         </View>
@@ -225,7 +225,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
     );
 
     return (
-        <View className="flex-1 bg-white relative">
+        <View className="flex-1 bg-[#F2F3F5] relative">
             <StatusBar barStyle="dark-content" />
 
             {/* Back/Close Button - Absolute Positioned */}
