@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useRootNavigationState } from 'expo-router';
+import { useAppStore, CachedMatch } from '@/lib/store';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ const GLOBAL_CHAT_ID = '71000000-0000-0000-0000-000000000000';
 export default function MessagesScreen() {
     const rootNavState = useRootNavigationState();
     const { user } = useAuth();
+    const { userCaches, updateUserCache, isMatchesCacheStale } = useAppStore();
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'personal' | 'global'>('personal');
@@ -34,7 +36,28 @@ export default function MessagesScreen() {
     if (!rootNavState?.key) return null;
 
     useEffect(() => {
-        if (user) fetchMatches();
+        if (user) {
+            const cache = userCaches[user.id];
+            // Fix #1: TTL check — load cache instantly if fresh (< 5 min)
+            if (cache?.matches?.length > 0 && !isMatchesCacheStale(user.id)) {
+                // Map slim cache back to full Match shape for rendering
+                setMatches(cache.matches.map((m: CachedMatch) => ({
+                    id: m.id,
+                    created_at: m.created_at,
+                    matchedUser: {
+                        id: m.matchedUser.id,
+                        displayName: m.matchedUser.displayName,
+                        photos: m.matchedUser.primaryPhotoUrl
+                            ? [{ imageUrl: m.matchedUser.primaryPhotoUrl, position: 0 }]
+                            : [],
+                    },
+                })));
+                setLoading(false);
+                fetchMatches(false); // Sync in background
+            } else {
+                fetchMatches(true);
+            }
+        }
     }, [user]);
 
     useEffect(() => {
@@ -69,9 +92,9 @@ export default function MessagesScreen() {
         }
     };
 
-    const fetchMatches = async () => {
+    const fetchMatches = async (showLoading = true) => {
         if (!user) return;
-        setLoading(true);
+        if (showLoading) setLoading(true);
         try {
             // ✅ Single query with JOIN — no N+1 problem
             // Fetches matches + other user's profile + photos in ONE round trip
@@ -100,6 +123,20 @@ export default function MessagesScreen() {
             }).filter((m: any) => m.matchedUser != null);
 
             setMatches(validMatches);
+            // Fix #1 + #3: Store slim version only WITH timestamp for TTL
+            updateUserCache(user.id, {
+                matches: validMatches.map(m => ({
+                    id: m.id,
+                    created_at: m.created_at,
+                    matchedUser: {
+                        id: m.matchedUser.id,
+                        displayName: m.matchedUser.displayName,
+                        primaryPhotoUrl: (m.matchedUser.photos || [])
+                            .sort((a: any, b: any) => a.position - b.position)[0]?.imageUrl,
+                    },
+                })) as CachedMatch[],
+                matchesLastFetchedAt: Date.now(),
+            });
         } catch (error) {
             console.error('Error in fetchMatches:', error);
         } finally {

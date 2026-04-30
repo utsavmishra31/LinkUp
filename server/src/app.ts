@@ -3,6 +3,7 @@ import express from 'express';
 
 import promptsRoutes from './routes/prompts.routes';
 import uploadRoutes from './routes/upload.routes';
+import discoveryRoutes from './routes/discovery.routes';
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(express.json());
 
 app.use('/upload', uploadRoutes);
 app.use('/prompts', promptsRoutes);
+app.use('/api/discovery', discoveryRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import type { User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAppStore } from '@/lib/store';
 
 export interface Photo {
     id: string;
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<Profile | null>(null);
+    const { clearUserCache } = useAppStore();
 
     const fetchProfile = async (userId: string) => {
         try {
@@ -145,6 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         try {
+            // Fix #4: Clear this user's cache BEFORE signing out
+            // Prevents stale data leaking if someone else logs into same device
+            if (user?.id) clearUserCache(user.id);
+
             await supabase.auth.signOut();
             await GoogleSignin.signOut();
             await AsyncStorage.removeItem('user_profile');

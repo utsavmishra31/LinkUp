@@ -14,6 +14,7 @@ import { useAuthContext } from '@/lib/auth/AuthContext';
 import { AvailabilityPicker } from '@/components/AvailabilityPicker';
 import AgeRangeSlider from '@/components/AgeRangeSlider';
 import DistanceSlider from '@/components/DistanceSlider';
+import { useAppStore } from '@/lib/store';
 
 const EditRow = ({ label, value, onPress }: { label: string, value: string, onPress: () => void }) => (
     <TouchableOpacity
@@ -42,9 +43,18 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const [isInterestedInModalVisible, setIsInterestedInModalVisible] = useState(false);
     const [savingFilters, setSavingFilters] = useState(false);
+    
+    const { userCaches, updateUserCache } = useAppStore();
 
     useEffect(() => {
         if (visible && user) {
+            const cache = userCaches[user.id]?.filters;
+            if (cache) {
+                setAgeRange(cache.ageRange);
+                setDistance(cache.distance);
+                setInterestedIn(cache.interestedIn);
+                setSelectedAvailability(cache.selectedAvailability);
+            }
             loadUserPreferences();
         }
     }, [visible, user]);
@@ -67,6 +77,16 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                 const idx = (profileData.availableNext8Days as boolean[]).findIndex(v => v === true);
                 if (idx !== -1) setSelectedAvailability(idx);
             }
+
+            // Update cache silently
+            updateUserCache(user.id, {
+                filters: {
+                    ageRange: { low: filterData?.minAge ?? 18, high: filterData?.maxAge ?? 45 },
+                    distance: filterData?.maxDistanceKm ?? 50,
+                    interestedIn: userData?.interestedIn || [],
+                    selectedAvailability: profileData?.availableNext8Days ? (profileData.availableNext8Days as boolean[]).findIndex(v => v === true) : null,
+                }
+            });
         } catch (e) {
             console.error('Error loading user preferences:', e);
         }
@@ -89,6 +109,18 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                     maxDistanceKm: distance,
                 }),
             ]);
+            
+            // Update cache
+            updateUserCache(user.id, {
+                filters: {
+                    ageRange,
+                    distance,
+                    interestedIn,
+                    selectedAvailability,
+                },
+                profiles: [] // Clear dashboard profiles cache on filter change so it fetches new ones
+            });
+            
             onApply();
         } catch (e) {
             console.error('Error saving filters:', e);
