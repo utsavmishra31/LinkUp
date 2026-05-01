@@ -22,12 +22,13 @@ export interface CachedProfile {
   age?: number;
   gender?: string;
   bio?: string;
-  // Store all photo URLs to show them on dashboard load without waiting for fresh fetch
   photos?: string[];
-  // For poll/question display
   viewerQuestion?: string;
   viewerPollOptions?: string[];
   viewerPollAnswer?: number;
+  height?: string;
+  interestedIn?: string[];
+  prompts?: { id: string; question: string; answer: string; }[] | null;
 }
 
 // ─── Minimal Match (same principle — IDs + display name + one photo) ─────────

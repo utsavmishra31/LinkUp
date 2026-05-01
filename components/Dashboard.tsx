@@ -24,6 +24,9 @@ const toSlimCache = (p: ProfilePreviewData): CachedProfile => ({
     viewerQuestion: p.viewerQuestion,
     viewerPollOptions: p.viewerPollOptions,
     viewerPollAnswer: p.viewerPollAnswer,
+    height: p.height,
+    interestedIn: p.interestedIn,
+    prompts: (p.prompts || []).filter((pr): pr is { id: string; question: string; answer: string } => pr !== null),
 });
 
 const fromSlimCache = (c: CachedProfile): ProfilePreviewData => ({
@@ -36,8 +39,9 @@ const fromSlimCache = (c: CachedProfile): ProfilePreviewData => ({
     viewerQuestion: c.viewerQuestion,
     viewerPollOptions: c.viewerPollOptions,
     viewerPollAnswer: c.viewerPollAnswer,
-    height: undefined,
-    prompts: [],
+    height: c.height,
+    interestedIn: c.interestedIn,
+    prompts: c.prompts || [],
 });
 
 export default function Dashboard() {
@@ -133,7 +137,7 @@ export default function Dashboard() {
                     const existingIds = new Set(prev.map(p => p.id));
                     const merged = [...prev, ...mappedProfiles.filter(p => !existingIds.has(p.id))];
                     updateUserCache(user.id, {
-                        profiles: merged.map(toSlimCache),
+                        profiles: merged.slice(0, 20).map(toSlimCache),
                         profilesLastFetchedAt: Date.now(),
                     });
                     return merged;
@@ -149,7 +153,7 @@ export default function Dashboard() {
                     const brandNew = mappedProfiles.filter(p => !currentIds.has(p.id));
                     const merged = [...stillOnScreen, ...brandNew];
                     updateUserCache(user.id, {
-                        profiles: merged.map(toSlimCache),
+                        profiles: merged.slice(0, 20).map(toSlimCache),
                         profilesLastFetchedAt: Date.now(),
                     });
                     return merged;
@@ -158,7 +162,7 @@ export default function Dashboard() {
                 // Full fresh fetch (cold start or filter change)
                 setProfiles(mappedProfiles);
                 updateUserCache(user.id, {
-                    profiles: mappedProfiles.map(toSlimCache),
+                    profiles: mappedProfiles.slice(0, 20).map(toSlimCache),
                     profilesLastFetchedAt: Date.now(),
                 });
             }
