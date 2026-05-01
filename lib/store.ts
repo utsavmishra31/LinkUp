@@ -9,7 +9,7 @@ export interface FilterState {
   ageRange: { low: number; high: number };
   distance: number;
   interestedIn: string[];
-  selectedAvailability: number | null;
+  selectedAvailability: string | null; // ISO date string e.g. "2026-05-06"
   filterByAvailability: boolean;
 }
 

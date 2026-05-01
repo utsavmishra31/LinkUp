@@ -69,7 +69,7 @@ model User {
 
 
 // Stores per-user discovery filter preferences (filter-specific only)
-// interestedIn is on User model, availableNext8Days is on Profile model
+// interestedIn is on User model, availableDate is on Profile model
 model FilterPreference {
   userId        String @id @db.Uuid
 
@@ -91,7 +91,7 @@ model Profile {
   viewerQuestion     String?
   viewerPollOptions  String[]
   viewerPollAnswer   Int?
-  availableNext8Days Boolean[]
+  availableDate      String?  @map("availableDate") // ISO date string e.g. "2026-05-06"
 
   location Unsupported("geography(Point,4326)")?
 

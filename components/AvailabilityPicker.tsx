@@ -1,9 +1,9 @@
 import * as Haptics from 'expo-haptics';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
 // Generate 8 days starting from today (today + next 7 days)
-const getNext8Days = () => {
+export const getNext8Days = () => {
     const days = [];
     const today = new Date();
 
@@ -14,12 +14,16 @@ const getNext8Days = () => {
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(date.getDate()).padStart(2, '0');
+
         days.push({
             id: i,
             dayName: dayNames[date.getDay()],
             dayNumber: date.getDate(),
             month: monthNames[date.getMonth()],
-            fullDate: date.toISOString().split('T')[0],
+            fullDate: `${year}-${month}-${dayStr}`, // Local "YYYY-MM-DD"
             isToday: i === 0,
         });
     }
@@ -27,10 +31,18 @@ const getNext8Days = () => {
     return days;
 };
 
-const DAYS = getNext8Days();
+// Today's ISO date string
+export const getTodayDateString = (): string => getNext8Days()[0].fullDate;
+
+// Given a stored ISO date string, find its index in current DAYS window.
+// Returns -1 if not found (date has passed or is in the future beyond window).
+export const findDateIndex = (dateStr: string | null): number => {
+    if (!dateStr) return -1;
+    return getNext8Days().findIndex(d => d.fullDate === dateStr);
+};
 
 interface DayCardProps {
-    day: typeof DAYS[0];
+    day: ReturnType<typeof getNext8Days>[0];
     isSelected: boolean;
     onPress: () => void;
 }
@@ -77,42 +89,54 @@ const DayCard = ({ day, isSelected, onPress }: DayCardProps) => {
 };
 
 interface AvailabilityPickerProps {
-    selectedDayIndex: number | null;
-    onSelectDay: (index: number) => void;
+    /** ISO date string e.g. "2026-05-06", or null */
+    selectedDate: string | null;
+    onSelectDate: (date: string) => void;
 }
 
-export const AvailabilityPicker = ({ selectedDayIndex, onSelectDay }: AvailabilityPickerProps) => {
-    const handleSelectDay = (index: number) => {
+export const AvailabilityPicker = ({ selectedDate, onSelectDate }: AvailabilityPickerProps) => {
+
+    const days = React.useMemo(() => getNext8Days(), []);
+
+    // Auto-fallback: if saved date is no longer in the 8-day window,
+    // automatically select today so the user always has a valid selection.
+    useEffect(() => {
+        if (selectedDate !== null) {
+            const idx = findDateIndex(selectedDate);
+            if (idx === -1) {
+                // Saved date has passed — auto-select today
+                onSelectDate(days[0].fullDate);
+            }
+        }
+    }, [selectedDate, onSelectDate, days]);
+
+    const handleSelectDay = (date: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Toggle selection logic should be handled by parent if needed, 
-        // but typically the picker just reports the selection.
-        // Based on original logic: "If clicking the same day, deselect it; otherwise select the new day"
-        // We'll let the parent handle the toggling logic by passing the raw index.
-        onSelectDay(index);
+        onSelectDate(date);
     };
 
     return (
         <View className="gap-3">
             {/* First row - 4 days */}
             <View className="flex-row gap-3">
-                {DAYS.slice(0, 4).map((day, index) => (
+                {days.slice(0, 4).map((day) => (
                     <DayCard
                         key={day.id}
                         day={day}
-                        isSelected={selectedDayIndex === index}
-                        onPress={() => handleSelectDay(index)}
+                        isSelected={selectedDate === day.fullDate}
+                        onPress={() => handleSelectDay(day.fullDate)}
                     />
                 ))}
             </View>
 
             {/* Second row - 4 days */}
             <View className="flex-row gap-3">
-                {DAYS.slice(4, 8).map((day, index) => (
+                {days.slice(4, 8).map((day) => (
                     <DayCard
                         key={day.id}
                         day={day}
-                        isSelected={selectedDayIndex === index + 4}
-                        onPress={() => handleSelectDay(index + 4)}
+                        isSelected={selectedDate === day.fullDate}
+                        onPress={() => handleSelectDay(day.fullDate)}
                     />
                 ))}
             </View>

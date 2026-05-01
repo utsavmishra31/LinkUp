@@ -1,4 +1,4 @@
-import { AvailabilityPicker } from '@/components/AvailabilityPicker';
+import { AvailabilityPicker, getNext8Days } from '@/components/AvailabilityPicker';
 import { ArrowButton } from '@/components/ui/ArrowButton';
 import { useAuth } from '@/lib/auth/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -12,22 +12,22 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AvailabilitySelection() {
-    // Initialize with no day selected (null means no selection)
-    const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
+    // Store the actual ISO date string so selection persists across days
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { user, refreshProfile } = useAuth();
     const router = useRouter();
 
-    const handleSelectDay = (index: number) => {
-        // If clicking the same day, deselect it; otherwise select the new day
-        setSelectedDayIndex(selectedDayIndex === index ? null : index);
+    const handleSelectDate = (date: string) => {
+        // Toggle: tap same date → deselect, otherwise select new date
+        setSelectedDate(selectedDate === date ? null : date);
     };
 
     const handleContinue = async () => {
         if (!user) return;
 
-        // Check if a day is selected
-        if (selectedDayIndex === null) {
+        // Check if a date is selected
+        if (selectedDate === null) {
             Alert.alert('Selection Required', 'Please select a day when you\'re available to meet.');
             return;
         }
@@ -41,20 +41,13 @@ export default function AvailabilitySelection() {
                 .eq('userId', user.id)
                 .single();
 
-            // Create boolean array with only the selected day as true
-            // Note: We use 8-day array for database compatibility
-            const availabilityArray = new Array(8).fill(false);
-            if (selectedDayIndex < 8) {
-                availabilityArray[selectedDayIndex] = true;
-            }
+
 
             if (existingProfile) {
                 // Update existing profile
                 const { error } = await supabase
                     .from('profiles')
-                    .update({
-                        availableNext8Days: availabilityArray,
-                    })
+                    .update({ availableDate: selectedDate })
                     .eq('userId', user.id);
 
                 if (error) throw error;
@@ -64,7 +57,7 @@ export default function AvailabilitySelection() {
                     .from('profiles')
                     .insert({
                         userId: user.id,
-                        availableNext8Days: availabilityArray,
+                        availableDate: selectedDate,
                     });
 
                 if (error) throw error;
@@ -102,8 +95,8 @@ export default function AvailabilitySelection() {
 
                 {/* Shared Picker Component */}
                 <AvailabilityPicker
-                    selectedDayIndex={selectedDayIndex}
-                    onSelectDay={handleSelectDay}
+                    selectedDate={selectedDate}
+                    onSelectDate={handleSelectDate}
                 />
 
                 <View className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -115,7 +108,7 @@ export default function AvailabilitySelection() {
                 <View className="flex-1 justify-end pb-8">
                     <ArrowButton
                         onPress={handleContinue}
-                        disabled={selectedDayIndex === null}
+                        disabled={selectedDate === null}
                         isLoading={isSubmitting}
                     />
                 </View>

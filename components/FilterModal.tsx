@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuthContext } from '@/lib/auth/AuthContext';
-import { AvailabilityPicker } from '@/components/AvailabilityPicker';
+import { AvailabilityPicker, getNext8Days } from '@/components/AvailabilityPicker';
 import AgeRangeSlider from '@/components/AgeRangeSlider';
 import DistanceSlider from '@/components/DistanceSlider';
 import { useAppStore } from '@/lib/store';
@@ -38,7 +38,7 @@ interface FilterModalProps {
 
 export default function FilterModal({ visible, onClose, onApply }: FilterModalProps) {
     const { user } = useAuthContext();
-    const [selectedAvailability, setSelectedAvailability] = useState<number | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [ageRange, setAgeRange] = useState({ low: 18, high: 45 });
     const [distance, setDistance] = useState(50);
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
@@ -55,7 +55,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                 setAgeRange(cache.ageRange);
                 setDistance(cache.distance);
                 setInterestedIn(cache.interestedIn);
-                setSelectedAvailability(cache.selectedAvailability);
+                setSelectedDate(cache.selectedAvailability ?? null);
                 setFilterByAvailability(cache.filterByAvailability ?? false);
             }
             loadUserPreferences();
@@ -67,7 +67,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
         try {
             const [{ data: userData }, { data: profileData }, { data: filterData }] = await Promise.all([
                 supabase.from('users').select('interestedIn').eq('id', user.id).single(),
-                supabase.from('profiles').select('availableNext8Days').eq('userId', user.id).single(),
+                supabase.from('profiles').select('availableDate').eq('userId', user.id).single(),
                 supabase.from('filter_preferences').select('minAge, maxAge, maxDistanceKm, filterByAvailability').eq('userId', user.id).single(),
             ]);
 
@@ -77,18 +77,18 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                 setDistance(filterData.maxDistanceKm ?? 50);
                 setFilterByAvailability(filterData.filterByAvailability ?? false);
             }
-            if (profileData?.availableNext8Days?.length) {
-                const idx = (profileData.availableNext8Days as boolean[]).findIndex(v => v === true);
-                if (idx !== -1) setSelectedAvailability(idx);
+            if (profileData?.availableDate) {
+                setSelectedDate(profileData.availableDate);
             }
 
             // Update cache silently
+            const cachedDate = profileData?.availableDate || null;
             updateUserCache(user.id, {
                 filters: {
                     ageRange: { low: filterData?.minAge ?? 18, high: filterData?.maxAge ?? 45 },
                     distance: filterData?.maxDistanceKm ?? 50,
                     interestedIn: userData?.interestedIn || [],
-                    selectedAvailability: profileData?.availableNext8Days ? (profileData.availableNext8Days as boolean[]).findIndex(v => v === true) : null,
+                    selectedAvailability: cachedDate,
                     filterByAvailability: filterData?.filterByAvailability ?? false,
                 }
             });
@@ -101,12 +101,11 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
         if (!user) return;
         setSavingFilters(true);
         try {
-            const availability = Array(8).fill(false);
-            if (selectedAvailability !== null) availability[selectedAvailability] = true;
+
 
             await Promise.all([
                 supabase.from('users').update({ interestedIn }).eq('id', user.id),
-                supabase.from('profiles').update({ availableNext8Days: availability }).eq('userId', user.id),
+                supabase.from('profiles').update({ availableDate: selectedDate }).eq('userId', user.id),
                 supabase.from('filter_preferences').upsert({
                     userId: user.id,
                     minAge: ageRange.low,
@@ -122,7 +121,7 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                     ageRange,
                     distance,
                     interestedIn,
-                    selectedAvailability,
+                    selectedAvailability: selectedDate,
                     filterByAvailability,
                 },
                 profiles: [] // Clear dashboard profiles cache on filter change so it fetches new ones
@@ -216,8 +215,8 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                                     Showing only users available on your selected day.
                                 </Text>
                                 <AvailabilityPicker
-                                    selectedDayIndex={selectedAvailability}
-                                    onSelectDay={setSelectedAvailability}
+                                    selectedDate={selectedDate}
+                                    onSelectDate={setSelectedDate}
                                 />
                             </>
                         )}

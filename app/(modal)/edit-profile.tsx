@@ -1,5 +1,5 @@
 import { PREDEFINED_PROMPTS, PromptData, PromptModal, PromptSlot, ViewerQuestionModal } from '@/app/(onboarding)/prompts';
-import { AvailabilityPicker } from '@/components/AvailabilityPicker';
+import { AvailabilityPicker, getNext8Days } from '@/components/AvailabilityPicker';
 import { HEIGHT_OPTIONS, HeightPicker } from '@/components/HeightPicker';
 import { PhotoGrid, PhotoItem } from '@/components/PhotoGrid';
 import { ProfilePreviewContent } from '@/components/ProfilePreviewContent';
@@ -56,7 +56,7 @@ export default function EditProfileScreen() {
     const [dob, setDob] = useState<string | null>(null);
 
     const [selectedPrompts, setSelectedPrompts] = useState<(PromptData | null)[]>([null]);
-    const [availableDayIndex, setAvailableDayIndex] = useState<number | null>(null);
+    const [availableDate, setAvailableDate] = useState<string | null>(null); // ISO date e.g. "2026-05-06"
 
     const [isPromptModalVisible, setPromptModalVisible] = useState(false);
     const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
@@ -82,7 +82,7 @@ export default function EditProfileScreen() {
         interestedIn: string[];
         height: string;
         prompts: (PromptData | null)[];
-        availableDayIndex: number | null;
+        availableDayIndex: string | null;
         viewerQuestion: string | null;
         viewerPollOptions: string[];
         viewerPollAnswer: number | null;
@@ -95,7 +95,7 @@ export default function EditProfileScreen() {
         if (bio !== initialState.bio) return true;
         if (gender !== initialState.gender) return true;
         if (height !== initialState.height) return true;
-        if (availableDayIndex !== initialState.availableDayIndex) return true;
+        if (availableDate !== initialState.availableDayIndex) return true;
         if (viewerQuestion !== initialState.viewerQuestion) return true;
         if (viewerPollAnswer !== initialState.viewerPollAnswer) return true;
         if (viewerPollOptions.join(',') !== initialState.viewerPollOptions.join(',')) return true;
@@ -114,7 +114,7 @@ export default function EditProfileScreen() {
             if (currentPrompt.question !== initialPrompt.question || currentPrompt.answer !== initialPrompt.answer) return true;
         }
         return false;
-    }, [initialState, firstName, lastName, bio, gender, interestedIn, height, availableDayIndex, selectedPrompts, viewerQuestion, viewerPollOptions, viewerPollAnswer]);
+    }, [initialState, firstName, lastName, bio, gender, interestedIn, height, availableDate, selectedPrompts, viewerQuestion, viewerPollOptions, viewerPollAnswer]);
 
     useEffect(() => {
         const loadProfileData = async () => {
@@ -151,9 +151,8 @@ export default function EditProfileScreen() {
                         setSelectedPrompts([null]);
                     }
 
-                    if (profileData.availableNext8Days && Array.isArray(profileData.availableNext8Days)) {
-                        const index = profileData.availableNext8Days.findIndex((isAvailable: boolean) => isAvailable === true);
-                        setAvailableDayIndex(index !== -1 ? index : null);
+                    if (profileData.availableDate) {
+                        setAvailableDate(profileData.availableDate);
                     }
                     setViewerQuestion(profileData.viewerQuestion || null);
                     setViewerPollOptions(profileData.viewerPollOptions || []);
@@ -161,6 +160,7 @@ export default function EditProfileScreen() {
                 }
 
                 const profileDataForState = (data.profile && Array.isArray(data.profile)) ? data.profile[0] : (data.profile || {});
+                const initDate = profileDataForState.availableDate || null;
                 setInitialState({
                     photos: (data.photos || []).sort((a: any, b: any) => a.position - b.position).map((p: any) => p.id),
                     firstName: data.displayName || '',
@@ -170,9 +170,7 @@ export default function EditProfileScreen() {
                     interestedIn: data.interestedIn || [],
                     height: data.height || '',
                     prompts: (profileDataForState.prompts && profileDataForState.prompts.length > 0) ? [profileDataForState.prompts[0]] : [null],
-                    availableDayIndex: (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true) !== -1
-                        ? (profileDataForState.availableNext8Days || []).findIndex((x: boolean) => x === true)
-                        : null,
+                    availableDayIndex: initDate,
                     viewerQuestion: profileDataForState.viewerQuestion || null,
                     viewerPollOptions: profileDataForState.viewerPollOptions || [],
                     viewerPollAnswer: profileDataForState.viewerPollAnswer ?? null,
@@ -366,10 +364,7 @@ export default function EditProfileScreen() {
 
             if (userError) throw userError;
 
-            const availabilityArray = new Array(8).fill(false);
-            if (availableDayIndex !== null && availableDayIndex >= 0 && availableDayIndex < 8) {
-                availabilityArray[availableDayIndex] = true;
-            }
+
 
             const validPrompts = selectedPrompts.filter(p => p !== null);
             const { error: profileError } = await supabase
@@ -378,7 +373,7 @@ export default function EditProfileScreen() {
                     userId: user.id,
                     bio: bio.trim(),
                     prompts: validPrompts,
-                    availableNext8Days: availabilityArray,
+                    availableDate: availableDate,
                     viewerQuestion: viewerQuestion || null,
                     viewerPollOptions: viewerPollOptions.length > 0 ? viewerPollOptions : [],
                     viewerPollAnswer: viewerPollAnswer !== null ? viewerPollAnswer : null,
@@ -397,8 +392,8 @@ export default function EditProfileScreen() {
         }
     };
 
-    const handleSelectDay = (index: number) => {
-        setAvailableDayIndex(availableDayIndex === index ? null : index);
+    const handleSelectDate = (date: string) => {
+        setAvailableDate(availableDate === date ? null : date);
     };
 
     const handleBack = () => {
@@ -494,7 +489,7 @@ export default function EditProfileScreen() {
                             <View className="mb-8">
                                 <Text className="text-lg font-bold mb-3">Availability</Text>
                                 <Text className="text-gray-500 text-sm mb-4">Select the day you are available.</Text>
-                                <AvailabilityPicker selectedDayIndex={availableDayIndex} onSelectDay={handleSelectDay} />
+                                <AvailabilityPicker selectedDate={availableDate} onSelectDate={handleSelectDate} />
                             </View>
 
 
