@@ -210,15 +210,17 @@ export default function FilterModal({ visible, onClose, onApply }: FilterModalPr
                                 ios_backgroundColor="#E5E7EB"
                             />
                         </View>
-                        <Text className="text-sm text-gray-500 mb-4">
-                            {filterByAvailability 
-                                ? "Showing only users available on your selected day." 
-                                : "Showing all users. Select a day below to update your own availability."}
-                        </Text>
-                        <AvailabilityPicker
-                            selectedDayIndex={selectedAvailability}
-                            onSelectDay={setSelectedAvailability}
-                        />
+                        {filterByAvailability && (
+                            <>
+                                <Text className="text-sm text-gray-500 mb-4">
+                                    Showing only users available on your selected day.
+                                </Text>
+                                <AvailabilityPicker
+                                    selectedDayIndex={selectedAvailability}
+                                    onSelectDay={setSelectedAvailability}
+                                />
+                            </>
+                        )}
                     </View>
                 </ScrollView>
 
