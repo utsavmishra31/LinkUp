@@ -22,8 +22,8 @@ export interface CachedProfile {
   age?: number;
   gender?: string;
   bio?: string;
-  // Only the primary photo URL, not all photos
-  primaryPhotoUrl?: string;
+  // Store all photo URLs to show them on dashboard load without waiting for fresh fetch
+  photos?: string[];
   // For poll/question display
   viewerQuestion?: string;
   viewerPollOptions?: string[];

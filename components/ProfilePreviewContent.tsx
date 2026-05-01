@@ -244,6 +244,7 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                     className="flex-1"
                     showsVerticalScrollIndicator={false}
                     bounces={false}
+                    nestedScrollEnabled={true}
                     contentContainerStyle={{ paddingBottom: 100 }}
                 >
                     {renderContent()}

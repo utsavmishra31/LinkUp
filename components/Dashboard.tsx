@@ -20,7 +20,7 @@ const toSlimCache = (p: ProfilePreviewData): CachedProfile => ({
     age: p.age,
     gender: p.gender,
     bio: p.bio,
-    primaryPhotoUrl: p.photos[0]?.uri,
+    photos: p.photos.map(photo => photo.uri),
     viewerQuestion: p.viewerQuestion,
     viewerPollOptions: p.viewerPollOptions,
     viewerPollAnswer: p.viewerPollAnswer,
@@ -32,7 +32,7 @@ const fromSlimCache = (c: CachedProfile): ProfilePreviewData => ({
     age: c.age,
     gender: c.gender,
     bio: c.bio ?? '',
-    photos: c.primaryPhotoUrl ? [{ uri: c.primaryPhotoUrl }] : [],
+    photos: c.photos ? c.photos.map(uri => ({ uri })) : [],
     viewerQuestion: c.viewerQuestion,
     viewerPollOptions: c.viewerPollOptions,
     viewerPollAnswer: c.viewerPollAnswer,
@@ -284,17 +284,12 @@ export default function Dashboard() {
                                     profile={item}
                                     onLike={handleLike}
                                     onDislike={handleDislike}
-                                    scrollEnabled={false}
+                                    scrollEnabled={true}
                                 />
                             </View>
                         )}
                         showsVerticalScrollIndicator={false}
-                        ListHeaderComponent={
-                            <View className="px-6 py-6">
-                                <Text className="text-4xl font-bold text-black mb-1">Discover</Text>
-                                <Text className="text-lg text-gray-500">Meet new people near you</Text>
-                            </View>
-                        }
+
                     />
                 ) : (
                     <View className="flex-1 justify-center items-center px-10">
