@@ -44,100 +44,95 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
         setSelectedPollOption(null);
     }, [profile.id]);
 
-    // Filter out invalid photos/prompts
     const validPhotos = profile.photos.filter(p => !!p.uri);
     const validPrompts = profile.prompts.filter((p): p is PromptData => p !== null && !!p.answer);
 
     const renderContent = () => (
         <>
-            {/* Main Photo with Gradient Overlay */}
-            <View className="px-5 pt-16">
-                <View className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 shadow-sm mb-8">
+            {/* Main Photo with Glassmorphism Overlay */}
+            <View className="px-4 pt-12">
+                <View className="relative w-full aspect-[4/5] rounded-[40px] overflow-hidden shadow-2xl bg-gray-200">
                     {validPhotos.length > 0 ? (
                         <Image
                             source={{ uri: validPhotos[0].uri }}
-                            className="w-full h-full bg-gray-200"
+                            className="w-full h-full"
                             contentFit="cover"
-                            transition={200}
+                            transition={400}
                         />
                     ) : (
-                        <View className="w-full h-full bg-gray-200 items-center justify-center">
-                            <Ionicons name="person" size={64} color="#9ca3af" />
+                        <View className="w-full h-full bg-gray-300 items-center justify-center">
+                            <Ionicons name="person" size={80} color="#9ca3af" />
                         </View>
                     )}
 
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.8)']}
-                        className="absolute left-0 right-0 bottom-0 h-[200px]"
+                        colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
+                        className="absolute left-0 right-0 bottom-0 h-[250px]"
                     />
 
-                    <View className="absolute bottom-6 left-5 right-5">
-                        <Text className="text-white text-4xl font-extrabold shadow-sm">
-                            {profile.displayName}{profile.age ? `, ${profile.age}` : ''}
-                        </Text>
+                    <View className="absolute bottom-8 left-6 right-6">
+                        <View className="flex-row items-center mb-2">
+                             <View className="bg-green-500 w-2.5 h-2.5 rounded-full mr-2 shadow-sm" />
+                             <Text className="text-white/80 text-[10px] font-black uppercase tracking-[2px]">Active Now</Text>
+                        </View>
+                        <View className="bg-white/10 backdrop-blur-xl p-4 rounded-3xl border border-white/20">
+                            <Text className="text-white text-4xl font-black tracking-tight">
+                                {profile.displayName}{profile.age ? `, ${profile.age}` : ''}
+                            </Text>
+                        </View>
                     </View>
                 </View>
             </View>
 
             {/* Content Body */}
-            <View className="px-5">
-                {/* Personal Info Grid */}
-                <View className="flex-row flex-wrap gap-3 mb-8">
+            <View className="px-6 pt-10">
+                {/* Personal Info Grid - Minimal & Chic */}
+                <View className="flex-row flex-wrap gap-2 mb-10">
                     {profile.gender && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                            <Ionicons name="person-outline" size={18} color="#4B5563" />
-                            <Text className="ml-2 text-gray-700 font-semibold">
+                        <View className="flex-row items-center bg-white px-5 py-3 rounded-full shadow-sm border border-gray-100">
+                            <Ionicons name={profile.gender === 'MALE' ? 'male' : 'female'} size={14} color="#000" />
+                            <Text className="ml-2 text-black font-black text-[11px] uppercase tracking-wider">
                                 {profile.gender === 'MALE' ? 'Man' : profile.gender === 'FEMALE' ? 'Woman' : 'Non-binary'}
                             </Text>
                         </View>
                     )}
                     {profile.height && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                            <Ionicons name="resize-outline" size={18} color="#4B5563" />
-                            <Text className="ml-2 text-gray-700 font-semibold">{profile.height}</Text>
-                        </View>
-                    )}
-                    {(profile.jobTitle || profile.company) && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                            <Ionicons name="briefcase-outline" size={18} color="#4B5563" />
-                            <Text className="ml-2 text-gray-700 font-semibold text-sm">
-                                {profile.jobTitle}{profile.jobTitle && profile.company ? ' at ' : ''}{profile.company}
-                            </Text>
-                        </View>
-                    )}
-                    {profile.school && (
-                        <View className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                            <Ionicons name="school-outline" size={18} color="#4B5563" />
-                            <Text className="ml-2 text-gray-700 font-semibold text-sm">{profile.school}</Text>
+                        <View className="flex-row items-center bg-white px-5 py-3 rounded-full shadow-sm border border-gray-100">
+                            <Ionicons name="resize-outline" size={14} color="#000" />
+                            <Text className="ml-2 text-black font-black text-[11px] uppercase tracking-wider">{profile.height}</Text>
                         </View>
                     )}
                     {profile.interestedIn?.map((interest) => (
-                        <View key={interest} className="flex-row items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                            <View className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2" />
-                            <Text className="text-gray-700 font-semibold text-sm">
-                                Interested in {interest === 'MALE' ? 'Men' : interest === 'FEMALE' ? 'Women' : 'Non-binary'}
+                        <View key={interest} className="flex-row items-center bg-white px-5 py-3 rounded-full shadow-sm border border-gray-100">
+                            <Ionicons name="heart-outline" size={14} color="#000" />
+                            <Text className="ml-2 text-black font-black text-[11px] uppercase tracking-wider">
+                                {interest === 'MALE' ? 'Men' : interest === 'FEMALE' ? 'Women' : 'Non-binary'}
                             </Text>
                         </View>
                     ))}
                 </View>
 
-                {/* Bio */}
+                {/* Bio Section - Minimalist Elegant */}
                 {!!profile.bio && (
-                    <View className="mb-10 bg-white p-5 rounded-xl shadow-sm">
-                        <Text className="text-xl text-gray-800 leading-8 font-normal">
+                    <View className="mb-12 bg-white/50 p-8 rounded-[40px] border border-white shadow-xl relative overflow-hidden">
+                        <View className="flex-row items-center mb-6">
+                             <Text className="text-[10px] font-black text-black/40 uppercase tracking-[4px]">About Me</Text>
+                        </View>
+                        <Text className="text-xl text-black leading-9 font-medium tracking-tight">
                             {profile.bio}
                         </Text>
                     </View>
                 )}
 
-                {/* Photos & Prompts Interleaved */}
+                {/* Prompts Section - High Contrast */}
                 {validPrompts.map((prompt) => (
-                    <View key={prompt.id} className="mb-8">
-                        <View className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                            <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                    <View key={prompt.id} className="mb-10">
+                        <View className="bg-black p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
+                            <View className="bg-white/20 w-12 h-1 rounded-full mb-6" />
+                            <Text className="text-[10px] font-black text-white/50 uppercase tracking-[4px] mb-4 leading-5">
                                 {prompt.question}
                             </Text>
-                            <Text className="text-2xl font-semibold text-gray-900 leading-9">
+                            <Text className="text-2xl font-bold text-white leading-10 tracking-tight">
                                 {prompt.answer}
                             </Text>
                         </View>
@@ -145,26 +140,23 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 ))}
 
                 {validPhotos.slice(1).map((photo) => (
-                    <View key={photo.uri} className="mb-8 rounded-xl overflow-hidden aspect-square w-full bg-gray-100 shadow-sm">
+                    <View key={photo.uri} className="mb-10 rounded-[40px] overflow-hidden aspect-square w-full shadow-2xl bg-gray-100">
                         <Image
                             source={{ uri: photo.uri }}
                             className="w-full h-full"
                             contentFit="cover"
-                            transition={200}
+                            transition={400}
                         />
                     </View>
                 ))}
 
-                {/* Question for Viewers */}
+                {/* Question for Viewers - Elegant Interaction */}
                 {profile.viewerQuestion && (
-                    <View className="mb-8 bg-white border border-indigo-100 p-6 rounded-xl shadow-sm relative">
-                        <View className="absolute -top-3 -right-2 bg-indigo-500 rounded-full w-8 h-8 items-center justify-center border-2 border-white shadow-sm">
-                            <Ionicons name="chatbubble-ellipses" size={16} color="white" />
+                    <View className="mb-12 bg-white p-8 rounded-[40px] shadow-2xl border border-gray-50 relative">
+                        <View className="absolute -top-4 left-10 bg-black rounded-2xl px-4 py-2 shadow-lg">
+                            <Text className="text-white text-[10px] font-black uppercase tracking-widest">Question</Text>
                         </View>
-                        <Text className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">
-                            Question for you
-                        </Text>
-                        <Text className="text-2xl font-semibold text-gray-900 leading-9 mb-4">
+                        <Text className="text-2xl font-bold text-black leading-10 mb-8 pt-4">
                             {profile.viewerQuestion}
                         </Text>
                         
@@ -175,27 +167,25 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                                     const isCorrect = profile.viewerPollAnswer === idx;
                                     const showResult = selectedPollOption !== null;
                                     
-                                    let bgClass = "bg-white";
-                                    let borderClass = "border-indigo-100";
-                                    let textClass = "text-gray-700";
-                                    let icon = null;
+                                    let bgClass = "bg-gray-50";
+                                    let borderClass = "border-transparent";
+                                    let textClass = "text-black/60";
 
                                     if (showResult) {
                                         if (isSelected && isCorrect) {
-                                            bgClass = "bg-green-100";
-                                            borderClass = "border-green-500";
-                                            textClass = "text-green-800 font-bold";
-                                            icon = <Ionicons name="checkmark-circle" size={20} color="#16a34a" />;
+                                            bgClass = "bg-green-500";
+                                            textClass = "text-white font-black";
                                         } else if (isSelected && !isCorrect) {
-                                            bgClass = "bg-red-100";
-                                            borderClass = "border-red-500";
-                                            textClass = "text-red-800 font-bold";
-                                            icon = <Ionicons name="close-circle" size={20} color="#dc2626" />;
+                                            bgClass = "bg-red-500";
+                                            textClass = "text-white font-black";
                                         } else if (isCorrect) {
-                                            bgClass = "bg-green-50";
-                                            borderClass = "border-green-400";
-                                            textClass = "text-green-700";
-                                            icon = <Ionicons name="checkmark-circle-outline" size={20} color="#16a34a" />;
+                                            bgClass = "bg-green-100";
+                                            textClass = "text-green-800 font-black";
+                                        }
+                                    } else {
+                                        if (isSelected) {
+                                            bgClass = "bg-black";
+                                            textClass = "text-white font-black";
                                         }
                                     }
 
@@ -204,18 +194,17 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                                             key={idx}
                                             disabled={showResult}
                                             onPress={() => setSelectedPollOption(idx)}
-                                            className={`border rounded-xl px-4 py-3 flex-row items-center justify-between ${bgClass} ${borderClass}`}
+                                            className={`rounded-3xl px-6 py-4 flex-row items-center justify-between transition-all ${bgClass} ${borderClass}`}
                                         >
-                                            <Text className={textClass}>{opt}</Text>
-                                            {icon}
+                                            <Text className={`text-sm tracking-tight ${textClass}`}>{opt}</Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </View>
                         ) : (
-                            <View className="bg-white border border-indigo-100 rounded-full px-4 py-3 flex-row items-center">
-                                <Text className="text-gray-400 flex-1">Type your answer...</Text>
-                                <Ionicons name="send" size={18} color="#6366f1" />
+                            <View className="bg-gray-50 rounded-full px-6 py-5 flex-row items-center">
+                                <Text className="text-black/30 flex-1 font-bold text-sm">Type your answer...</Text>
+                                <Ionicons name="arrow-forward-circle" size={32} color="#000" />
                             </View>
                         )}
                     </View>
@@ -225,17 +214,16 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
     );
 
     return (
-        <View className="flex-1 bg-[#F2F3F5] relative">
+        <View className="flex-1 bg-[#FDFDFD] relative">
             <StatusBar barStyle="dark-content" />
 
-            {/* Back/Close Button - Absolute Positioned */}
             {onClose && (
                 <TouchableOpacity
                     onPress={onClose}
-                    className="absolute top-24 left-8 z-50 bg-black/50 p-2 rounded-full"
+                    className="absolute top-16 left-6 z-50 bg-white/20 backdrop-blur-md p-3 rounded-2xl border border-white/30"
                     hitSlop={20}
                 >
-                    <Ionicons name="arrow-back" size={24} color="white" />
+                    <Ionicons name="chevron-back" size={24} color="white" />
                 </TouchableOpacity>
             )}
 
@@ -243,9 +231,9 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 <ScrollView
                     className="flex-1"
                     showsVerticalScrollIndicator={false}
-                    bounces={false}
+                    bounces={true}
                     nestedScrollEnabled={true}
-                    contentContainerStyle={{ paddingBottom: 100 }}
+                    contentContainerStyle={{ paddingBottom: 150 }}
                 >
                     {renderContent()}
                 </ScrollView>
@@ -255,19 +243,21 @@ export function ProfilePreviewContent({ profile, onClose, onLike, onDislike, scr
                 </View>
             )}
 
-            {/* Floating Action Buttons */}
-            <View className="absolute bottom-10 left-0 right-0 flex-row justify-center items-center gap-6 z-50">
+            {/* Premium Floating Action Buttons */}
+            <View className="absolute bottom-12 left-0 right-0 flex-row justify-center items-center gap-8 z-50">
                 <TouchableOpacity
                     onPress={() => onDislike?.(profile.id)}
-                    className="w-16 h-16 bg-white rounded-full items-center justify-center shadow-xl border border-gray-100 active:bg-gray-50"
+                    className="w-14 h-14 bg-white rounded-full items-center justify-center shadow-2xl border border-gray-50 active:scale-90"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 }}
                 >
-                    <Ionicons name="close" size={30} color="#EF4444" />
+                    <Ionicons name="close" size={28} color="#000" />
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => onLike?.(profile.id)}
-                    className="w-16 h-16 bg-black rounded-full items-center justify-center shadow-xl active:opacity-80"
+                    className="w-20 h-20 bg-black rounded-full items-center justify-center shadow-2xl active:scale-95"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 15 }, shadowOpacity: 0.3, shadowRadius: 25 }}
                 >
-                    <Ionicons name="heart" size={30} color="#10B981" />
+                    <Ionicons name="heart" size={36} color="#FFF" />
                 </TouchableOpacity>
             </View>
         </View>
